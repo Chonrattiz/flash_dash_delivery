@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flash_dash_delivery/auth/welcome.dart';
+import 'package:get/get.dart';
 
 // --- นี่คือโค้ดของหน้า Sign up as User ทั้งหมด ---
 class SignUpUserScreen extends StatefulWidget {
@@ -90,16 +92,26 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE8F5E9), Color(0xFFEFEFEF)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+      decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFC4DFCE), // C4DFCE
+              Color(0xFFDDEBE3), // DDEBE3
+              Color(0xFFF6F8F7), // F6F8F7
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-      ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
+            onPressed: () {
+              Get.to(() =>  WelcomePage());
+            },
+          ),
           title: const Text(
             'Sign up as User',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -107,7 +119,6 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          foregroundColor: Colors.black,
         ),
         body: Center(
           child: SingleChildScrollView(

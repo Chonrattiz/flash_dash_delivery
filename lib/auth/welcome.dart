@@ -93,7 +93,7 @@ class WelcomePage extends StatelessWidget {
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  Get.to(() => const Login());
+                  Get.to(() => const LoginPage());
                 },
                 child: Text(
                   'Log In',

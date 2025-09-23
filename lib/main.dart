@@ -1,4 +1,4 @@
-import 'package:flash_dash_delivery/auth/login.dart';
+
 import 'auth/welcome.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flash_dash_delivery/auth/welcome.dart';
+import 'package:get/get.dart';
 
 class SignUpRiderScreen extends StatelessWidget {
   const SignUpRiderScreen({super.key});
@@ -7,23 +9,29 @@ class SignUpRiderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // ใช้ Container ครอบ Scaffold เพื่อสร้างพื้นหลังแบบ Gradient
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFE8F5E9), // สีเขียวอ่อน (สีเดียวกับพื้นหลังไอคอนกล้อง)
-            Color(0xFFEFEFEF), // สีเทาอ่อน (สีพื้นหลังเดิม)
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+      decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFC4DFCE), // C4DFCE
+              Color(0xFFDDEBE3), // DDEBE3
+              Color(0xFFF6F8F7), // F6F8F7
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-      ),
       child: Scaffold(
         // ทำให้ Scaffold โปร่งใสเพื่อให้มองเห็น Gradient ด้านหลัง
         backgroundColor: Colors.transparent,
 
         // 1. AppBar
         appBar: AppBar(
-          // --- แก้ไข Title ตามที่ขอ ---
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
+            onPressed: () {
+              Get.to(() =>  WelcomePage());
+            },
+          ),
           title: const Text(
             'Sign up as Rider',
             style: TextStyle(fontWeight: FontWeight.bold), // ทำให้ตัวหนังสือหนา
@@ -32,7 +40,6 @@ class SignUpRiderScreen extends StatelessWidget {
           // --------------------------
           backgroundColor: Colors.transparent, // AppBar โปร่งใส
           elevation: 0,
-          foregroundColor: Colors.black, // สีของลูกศรย้อนกลับและ Title
         ),
         body: Center(
           child: SingleChildScrollView(
