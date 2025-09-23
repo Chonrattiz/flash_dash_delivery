@@ -1,5 +1,5 @@
 import 'package:flash_dash_delivery/auth/login.dart';
-
+import 'auth/welcome.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -23,7 +23,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const Login(),
+      home:  WelcomePage(),
     );
   }
 }
