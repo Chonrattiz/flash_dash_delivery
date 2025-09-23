@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/Rider/mainRider.dart';
 import 'package:flutter/material.dart';
 import 'package:flash_dash_delivery/auth/welcome.dart';
 import 'package:get/get.dart';
@@ -10,16 +11,16 @@ class SignUpRiderScreen extends StatelessWidget {
     // ใช้ Container ครอบ Scaffold เพื่อสร้างพื้นหลังแบบ Gradient
     return Container(
       decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFC4DFCE), // C4DFCE
-              Color(0xFFDDEBE3), // DDEBE3
-              Color(0xFFF6F8F7), // F6F8F7
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFC4DFCE), // C4DFCE
+            Color(0xFFDDEBE3), // DDEBE3
+            Color(0xFFF6F8F7), // F6F8F7
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+      ),
       child: Scaffold(
         // ทำให้ Scaffold โปร่งใสเพื่อให้มองเห็น Gradient ด้านหลัง
         backgroundColor: Colors.transparent,
@@ -29,7 +30,7 @@ class SignUpRiderScreen extends StatelessWidget {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
             onPressed: () {
-              Get.to(() =>  WelcomePage());
+              Get.to(() => WelcomePage());
             },
           ),
           title: const Text(
@@ -109,7 +110,9 @@ class SignUpRiderScreen extends StatelessWidget {
                 // 5. Sign Up Button
                 ElevatedButton(
                   onPressed: () {
-                    // TODO: Implement sign up logic
+                    {
+                      Get.to(() => const RiderDashboardScreen());
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE), // สีปุ่ม
