@@ -1,5 +1,5 @@
-import 'package:flash_dash_delivery/login/registerRider.dart';
-import 'package:flash_dash_delivery/login/resisterUser.dart';
+import 'package:flash_dash_delivery/auth/registerRider.dart';
+import 'package:flash_dash_delivery/auth/resisterUser.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
