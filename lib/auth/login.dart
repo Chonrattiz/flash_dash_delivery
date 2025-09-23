@@ -1,47 +1,126 @@
+import 'package:flash_dash_delivery/Rider/MainRider.dart';
+import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:get/get.dart';
+
 import 'package:flash_dash_delivery/auth/registerRider.dart';
 import 'package:flash_dash_delivery/auth/resisterUser.dart';
-import 'package:get/get.dart';
 import 'package:flash_dash_delivery/auth/welcome.dart';
 import 'package:flash_dash_delivery/user/main_user.dart';
 
+// Import our service and models
 
-class LoginPage extends StatelessWidget {
+import '../model/request/login_request.dart';
+import '../model/response/login_response.dart';
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  // Controllers to get text from TextFields
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _apiService = ApiService();
+
+  // State variable to show a loading indicator
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    // Clean up the controllers when the widget is removed
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // The main login logic
+  Future<void> _login() async {
+    // Basic validation
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      Get.snackbar('Error', 'Please enter phone number and password');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    try {
+      final request = LoginRequest(
+        phone: _phoneController.text,
+        password: _passwordController.text,
+      );
+
+      final LoginResponse response = await _apiService.login(request);
+
+      // 1. Check the role from the response
+      final userRole = response.userProfile.role;
+
+      print('Login successful for user: ${response.userProfile.name}');
+      print('Role: $userRole');
+
+      // 2. Navigate based on the role and pass the entire 'response' object
+      if (userRole == 'customer') {
+        Get.offAll(() => const MainUserPage(), arguments: response);
+      } else if (userRole == 'rider') {
+        Get.offAll(() => const RiderDashboardScreen(), arguments: response);
+      } else {
+        // Handle cases where role is unknown or not supported
+        Get.snackbar(
+          'Login Error',
+          'Unsupported user role: $userRole',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      // Show error message if login fails
+      Get.snackbar(
+        'Login Failed',
+        e.toString().replaceFirst(
+          'Exception: ',
+          '',
+        ), // Clean up the error message
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      // This will always run, whether login succeeds or fails
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // Hide loading indicator
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. ใช้ Container เป็น Widget ตัวนอกสุดเพื่อกำหนดพื้นหลัง Gradient
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFC4DFCE), // C4DFCE
-            Color(0xFFDDEBE3), // DDEBE3
-            Color(0xFFF6F8F7), // F6F8F7
-          ],
+          colors: [Color(0xFFC4DFCE), Color(0xFFDDEBE3), Color(0xFFF6F8F7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      // 2. ใช้ Scaffold ที่มีพื้นหลังโปร่งใส
       child: Scaffold(
-        backgroundColor: Colors.transparent, // << สำคัญ: ทำให้ Scaffold โปร่งใส
-        // 3. นำ AppBar กลับมา และทำให้โปร่งใสเช่นกัน
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
+            icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              // การใช้ Get.to จะเป็นการเปิดหน้า WelcomePage ใหม่ซ้อนขึ้นมา
-              // หากต้องการย้อนกลับไปหน้าที่แล้วจริงๆ ควรใช้ Get.back();
-              Get.to(() =>  WelcomePage());
+              Get.to(() => WelcomePage());
             },
           ),
-          backgroundColor: Colors.transparent, // << สำคัญ: ทำให้ AppBar โปร่งใส
-          elevation: 0, // ลบเงาใต้ AppBar
-          foregroundColor:
-              Colors.black, // กำหนดสีของไอคอนและตัวหนังสือใน AppBar
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.black,
           title: Text(
             'Login',
             style: GoogleFonts.prompt(
@@ -52,8 +131,6 @@ class LoginPage extends StatelessWidget {
           ),
           centerTitle: true,
         ),
-
-        // Body ของหน้า Login เหมือนเดิมทุกอย่าง
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -61,25 +138,29 @@ class LoginPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // *** ใส่ path รูปของคุณที่นี่ ***
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Image.asset(
-                    'assets/image/login.png', // <--- แก้เป็น path รูปของคุณ
-                    height: 250,
-                  ),
+                  child: Image.asset('assets/image/login.png', height: 250),
                 ),
                 const SizedBox(height: 20),
 
-                // ช่องใส่เบอร์โทรศัพท์
-                _buildTextField(hintText: 'Phone Number'),
+                // Phone number field with controller
+                _buildTextField(
+                  controller: _phoneController,
+                  hintText: 'Phone Number',
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 16),
 
-                // ช่องใส่รหัสผ่าน
-                _buildTextField(hintText: 'Password', obscureText: true),
+                // Password field with controller
+                _buildTextField(
+                  controller: _passwordController,
+                  hintText: 'Password',
+                  obscureText: true,
+                ),
                 const SizedBox(height: 40),
 
-                // ปุ่ม Login
+                // Login Button
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF38E07B),
@@ -88,21 +169,20 @@ class LoginPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  onPressed: () { 
-                     Get.to(() =>  MainUserPage());
-                  },
-                  child: Text(
-                    'Login',
-                    style: GoogleFonts.prompt(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: const Color.fromARGB(255, 255, 255, 255),
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : _login,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Login',
+                          style: GoogleFonts.prompt(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 40),
 
-                // ข้อความ "Don't have an account?"
                 Text(
                   "Don't have an account?",
                   style: GoogleFonts.prompt(
@@ -112,7 +192,7 @@ class LoginPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // ปุ่ม Register
+                // Register buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -135,10 +215,16 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  // Helper Widget สำหรับสร้างช่องกรอกข้อมูล
-  Widget _buildTextField({required String hintText, bool obscureText = false}) {
+  Widget _buildTextField({
+    TextEditingController? controller, // Make controller nullable for reuse
+    required String hintText,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextField(
+      controller: controller, // Assign the controller here
       obscureText: obscureText,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: GoogleFonts.prompt(color: Colors.black54),
@@ -146,7 +232,7 @@ class LoginPage extends StatelessWidget {
         fillColor: const Color(0xFFCBF9DD),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide.none, // ไม่มีเส้นขอบ
+          borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
@@ -156,7 +242,6 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสร้างปุ่ม Register เพื่อลดการเขียนโค้ดซ้ำ
   Widget _buildRegisterButton({
     required String text,
     required VoidCallback onPressed,
@@ -169,7 +254,7 @@ class LoginPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         elevation: 0,
       ),
-      onPressed: onPressed, // <-- ใช้ onPressed ที่รับเข้ามา
+      onPressed: onPressed,
       child: Text(text, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
     );
   }

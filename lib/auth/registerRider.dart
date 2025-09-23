@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
+import 'package:flash_dash_delivery/auth/login.dart';
 // --- Imports ที่ต้องเพิ่ม/แก้ไข ---
 import '../api/api_service.dart';
 import '../model/request/register_request.dart';
@@ -58,7 +58,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
       // แสดง Dialog แจ้งเตือนเมื่อสำเร็จ
       await Get.dialog(
         AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Text('Success'),
           content: Text(message),
           actions: [
@@ -66,7 +68,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
               child: const Text('OK'),
               onPressed: () {
                 // เมื่อกด OK ให้ไปยังหน้า Dashboard และลบหน้าก่อนหน้าทั้งหมด
-                Get.offAll(() => const RiderDashboardScreen());
+                Get.offAll(() => LoginPage());
               },
             ),
           ],
@@ -74,14 +76,14 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
         barrierDismissible: false, // ไม่ให้กดปิด dialog ที่พื้นหลังได้
       );
       // --- จบส่วนแก้ไข ---
-
     } catch (e) {
-
       // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
       // แสดง Dialog แจ้งเตือนเมื่อเกิด Error
       Get.dialog(
-         AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Text('Error'),
           content: Text(e.toString().replaceAll('Exception: ', '')),
           actions: [
@@ -96,7 +98,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
         ),
       );
       // --- จบส่วนแก้ไข ---
-
     } finally {
       if (mounted) {
         setState(() {
@@ -115,17 +116,12 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFC4DFCE),
-            Color(0xFFDDEBE3),
-            Color(0xFFF6F8F7),
-          ],
+          colors: [Color(0xFFC4DFCE), Color(0xFFDDEBE3), Color(0xFFF6F8F7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -164,11 +160,22 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                         const CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.white,
-                          child: Icon(Icons.camera_alt, color: Color(0xFF4CAF50), size: 40),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: Color(0xFF4CAF50),
+                            size: 40,
+                          ),
                         ),
                         Container(
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: const Icon(Icons.add_circle, color: Color(0xFF4CAF50), size: 28),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add_circle,
+                            color: Color(0xFF4CAF50),
+                            size: 28,
+                          ),
                         ),
                       ],
                     ),
@@ -180,7 +187,8 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     hintText: 'Phone Number',
                     keyboardType: TextInputType.phone,
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter phone number';
+                      if (value == null || value.isEmpty)
+                        return 'Please enter phone number';
                       return null;
                     },
                   ),
@@ -191,7 +199,8 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     hintText: 'Password',
                     obscureText: true,
                     validator: (value) {
-                      if (value == null || value.length < 6) return 'Password must be at least 6 characters';
+                      if (value == null || value.length < 6)
+                        return 'Password must be at least 6 characters';
                       return null;
                     },
                   ),
@@ -201,7 +210,8 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     icon: Icons.person_outline,
                     hintText: 'Name',
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter your name';
+                      if (value == null || value.isEmpty)
+                        return 'Please enter your name';
                       return null;
                     },
                   ),
@@ -210,8 +220,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     controller: _licensePlateController,
                     icon: Icons.pin_outlined,
                     hintText: 'License plate',
-                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter license plate';
+                    validator: (value) {
+                      if (value == null || value.isEmpty)
+                        return 'Please enter license plate';
                       return null;
                     },
                   ),
@@ -225,10 +236,19 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF69F0AE),
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             elevation: 0,
                           ),
-                          child: const Text('Sign Up', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                          child: const Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                   const SizedBox(height: 20),
                 ],
@@ -262,7 +282,10 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
       ),
     );
   }
@@ -270,21 +293,34 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
   Widget _buildVehiclePhotoUpload() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           const Icon(Icons.photo_camera_outlined, color: Colors.grey),
           const SizedBox(width: 16),
-          const Expanded(child: Text('vehicle photo', style: TextStyle(color: Colors.grey, fontSize: 16))),
+          const Expanded(
+            child: Text(
+              'vehicle photo',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ),
           TextButton(
             onPressed: () {
               // TODO: Implement vehicle photo upload logic
             },
-            child: const Text('Upload', style: TextStyle(color: Color(0xFF69F0AE), fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Upload',
+              style: TextStyle(
+                color: Color(0xFF69F0AE),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
-

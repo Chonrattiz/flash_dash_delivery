@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
@@ -39,11 +40,13 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       Get.dialog(
         AlertDialog(
           title: const Text('Missing Information'),
-          content: const Text('Please select an address on the map before proceeding.'),
+          content: const Text(
+            'Please select an address on the map before proceeding.',
+          ),
           actions: [
             TextButton(onPressed: () => Get.back(), child: const Text('OK')),
           ],
-        )
+        ),
       );
       return;
     }
@@ -56,7 +59,8 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       name: _nameController.text,
       phone: _phoneController.text,
       password: _passwordController.text,
-      imageProfile: "https://example.com/profiles/customer_default.jpg", // ค่าชั่วคราว
+      imageProfile:
+          "https://example.com/profiles/customer_default.jpg", // ค่าชั่วคราว
     );
 
     final address = Address(
@@ -67,15 +71,20 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       ),
     );
 
-    final payload = RegisterCustomerPayload(userCore: userCore, address: address);
+    final payload = RegisterCustomerPayload(
+      userCore: userCore,
+      address: address,
+    );
 
     try {
       final message = await _apiService.registerCustomer(payload);
-      
+
       // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
       await Get.dialog(
         AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Text('Success'),
           content: Text(message),
           actions: [
@@ -83,7 +92,7 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
               child: const Text('OK'),
               onPressed: () {
                 // เมื่อกด OK ให้ไปยังหน้า Dashboard ของ User
-                Get.offAll(() => const MainUserPage());
+                Get.offAll(() => const LoginPage());
               },
             ),
           ],
@@ -91,12 +100,13 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
         barrierDismissible: false,
       );
       // --- จบส่วนแก้ไข ---
-
     } catch (e) {
       // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
       Get.dialog(
-         AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Text('Error'),
           content: Text(e.toString().replaceAll('Exception: ', '')),
           actions: [
@@ -126,8 +136,10 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      Get.snackbar('Location Disabled',
-          'Location services are disabled. Please enable them.');
+      Get.snackbar(
+        'Location Disabled',
+        'Location services are disabled. Please enable them.',
+      );
       return;
     }
     permission = await Geolocator.checkPermission();
@@ -139,13 +151,16 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       }
     }
     if (permission == LocationPermission.deniedForever) {
-      Get.snackbar('Permission Denied',
-          'Location permissions are permanently denied.');
+      Get.snackbar(
+        'Permission Denied',
+        'Location permissions are permanently denied.',
+      );
       return;
     }
     try {
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high,
+      );
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
         _mapController.move(_selectedLocation!, 16.0);
@@ -189,8 +204,10 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Get.back(),
           ),
-          title: const Text('Sign up as User',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Sign up as User',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -208,15 +225,24 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                     alignment: Alignment.bottomRight,
                     children: [
                       const CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.camera_alt,
-                              color: Color(0xFF4CAF50), size: 40)),
+                        radius: 50,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.camera_alt,
+                          color: Color(0xFF4CAF50),
+                          size: 40,
+                        ),
+                      ),
                       Container(
                         decoration: const BoxDecoration(
-                            color: Colors.white, shape: BoxShape.circle),
-                        child: const Icon(Icons.add_circle,
-                            color: Color(0xFF4CAF50), size: 28),
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add_circle,
+                          color: Color(0xFF4CAF50),
+                          size: 28,
+                        ),
                       ),
                     ],
                   ),
@@ -262,8 +288,10 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                     child: FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
-                        initialCenter:
-                            const LatLng(16.47, 102.82), // Default to Khon Kaen
+                        initialCenter: const LatLng(
+                          16.47,
+                          102.82,
+                        ), // Default to Khon Kaen
                         initialZoom: 14.0,
                         onTap: _handleMapTap,
                       ),
@@ -279,8 +307,11 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                                 point: _selectedLocation!,
                                 width: 80,
                                 height: 80,
-                                child: const Icon(Icons.location_pin,
-                                    size: 50, color: Colors.red),
+                                child: const Icon(
+                                  Icons.location_pin,
+                                  size: 50,
+                                  color: Colors.red,
+                                ),
                               ),
                             ],
                           ),
@@ -292,14 +323,20 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                 ElevatedButton.icon(
                   onPressed: _getCurrentLocation,
                   icon: const Icon(Icons.my_location, color: Colors.white),
-                  label: const Text('Find My Location',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
+                  label: const Text(
+                    'Find My Location',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                    backgroundColor: const Color(0xFF4CAF50),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _isLoading
@@ -307,15 +344,20 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                     : ElevatedButton(
                         onPressed: _registerCustomer,
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF69F0AE),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12))),
-                        child: const Text('Sign Up',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
+                          backgroundColor: const Color(0xFF69F0AE),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                 const SizedBox(height: 20),
               ],
@@ -345,12 +387,14 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
       ),
     );
   }
 }
-
