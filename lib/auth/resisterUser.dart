@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/Rider/mainRider.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -93,23 +94,23 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFC4DFCE), // C4DFCE
-              Color(0xFFDDEBE3), // DDEBE3
-              Color(0xFFF6F8F7), // F6F8F7
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFC4DFCE), // C4DFCE
+            Color(0xFFDDEBE3), // DDEBE3
+            Color(0xFFF6F8F7), // F6F8F7
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+      ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
             onPressed: () {
-              Get.to(() =>  WelcomePage());
+              Get.to(() => WelcomePage());
             },
           ),
           title: const Text(
@@ -228,7 +229,7 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                   onPressed: _getCurrentLocation,
                   icon: const Icon(Icons.add, color: Colors.white),
                   label: const Text(
-                    'Add Another Address',
+                    'ค้นหาตำแหน่งของฉัน',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -246,7 +247,9 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    // TODO: Implement sign up logic for user
+                    {
+                      Get.to(() => const RiderDashboardScreen());
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
