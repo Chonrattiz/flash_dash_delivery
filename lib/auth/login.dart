@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flash_dash_delivery/auth/registerRider.dart';
 import 'package:flash_dash_delivery/auth/resisterUser.dart';
 import 'package:get/get.dart';
-
 import 'package:flash_dash_delivery/auth/welcome.dart';
+import 'package:flash_dash_delivery/user/main_user.dart';
+
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -87,8 +88,8 @@ class LoginPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  onPressed: () {
-                    // Action สำหรับ Login
+                  onPressed: () { 
+                     Get.to(() =>  MainUserPage());
                   },
                   child: Text(
                     'Login',
