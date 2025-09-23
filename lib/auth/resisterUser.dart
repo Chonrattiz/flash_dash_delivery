@@ -217,7 +217,7 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                   onPressed: _getCurrentLocation,
                   icon: const Icon(Icons.add, color: Colors.white),
                   label: const Text(
-                    'Add Another Address',
+                    'ค้นหาตำแหน่งของฉัน',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
