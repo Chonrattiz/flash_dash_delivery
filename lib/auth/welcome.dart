@@ -1,26 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-void main() {
-  runApp(const FlashDashApp());
-}
-
-class FlashDashApp extends StatelessWidget {
-  const FlashDashApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: WelcomePage(),
-    );
-  }
-}
+import 'package:get/get.dart';
+import 'package:flash_dash_delivery/auth/registerRider.dart';
+import 'package:flash_dash_delivery/auth/resisterUser.dart'; 
+import 'package:flash_dash_delivery/auth/login.dart';
 
 class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+         width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -38,12 +29,12 @@ class WelcomePage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset('assets/flash_dash_icon.png'), // เพิ่ม path รูปที่ต้องการ
+              Image.asset('assets/image/logowelcome.png'), 
               const SizedBox(height: 40),
               Text(
                 'Flash-Dash Delivery',
-                style: GoogleFonts.lato(
-                  fontSize: 30,
+                style: GoogleFonts.jockeyOne(
+                  fontSize: 40,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -51,61 +42,65 @@ class WelcomePage extends StatelessWidget {
               const SizedBox(height: 20),
               Text(
                 'Choose your role to get started',
-                style: GoogleFonts.lato(
-                  fontSize: 18,
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                   fontWeight: FontWeight.w500,
                   color: Colors.black54,
                 ),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, // สีปุ่ม
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 100),
+                  backgroundColor: Color(0xFF38E07B), // สีปุ่ม
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 90),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
                 onPressed: () {
-                  // เส้นทางไปหน้า "Sign up as User"
+                   Get.to(() => const SignUpUserScreen());
                 },
                 child: Text(
                   'Sign up as User',
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.white,
+                  style: GoogleFonts.prompt(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color.fromARGB(255, 20, 20, 20),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // สีปุ่ม
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 100),
+                  backgroundColor: Color(0xFFCFF3DE), // สีปุ่ม
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
                 onPressed: () {
-                  // เส้นทางไปหน้า "Sign up as Rider"
+                  Get.to(() => const SignUpRiderScreen());
                 },
                 child: Text(
                   'Sign up as Rider',
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.white,
+                  style: GoogleFonts.prompt(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color.fromARGB(255, 20, 20, 20),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  // เส้นทางไปหน้า "Log In"
+                  Get.to(() => const Login());
                 },
                 child: Text(
                   'Log In',
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    color: Colors.green,
+                  style: GoogleFonts.prompt(
+                    fontSize: 24, 
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF42E283),
                   ),
                 ),
               ),
