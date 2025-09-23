@@ -36,91 +36,118 @@ class _MainUserPageState extends State<MainUserPage> {
       // 2. ใช้ Scaffold ที่มีพื้นหลังโปร่งใส
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Text(
-            'Home',
-            style: GoogleFonts.prompt(
-              color: Colors.black87,
-              fontWeight: FontWeight.w600,
+        appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(180.0), // กำหนดความสูงของ AppBar
+        child: AppBar(
+          backgroundColor: const Color(0xFFDE7676), // สีพื้นหลังของ AppBar
+          automaticallyImplyLeading: false, // ไม่แสดงปุ่ม back อัตโนมัติ
+          elevation: 0, // ไม่มีเงา
+          // ทำให้ AppBar มีขอบมนด้านล่าง
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(30),
             ),
           ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent, // ทำให้ AppBar โปร่งใส
-          elevation: 0,
-          automaticallyImplyLeading: false,
-        ),
-
-        // 3. Body มีแค่การ์ดข้อมูลหลักอย่างเดียว
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildInfoCard(), // การ์ดข้อมูลหลัก
+          // ใช้ flexibleSpace เพื่อจัดวางเนื้อหาให้อยู่ตรงกลางได้อย่างยืดหยุ่น
+          flexibleSpace: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Welcome Poder !!',
+                    style: GoogleFonts.prompt(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Action สำหรับปุ่มสั่งสินค้า
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // *** แก้ path รูป scooter ของคุณที่นี่ ***
+                        Image.asset('assets/image/moto.png', height: 35),
+                        const SizedBox(width: 10),
+                        Text(
+                          'ส่งสินค้า',
+                          style: GoogleFonts.prompt(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-
-        // 4. เรียกใช้ CustomBottomNavBar เหมือนเดิม
-        bottomNavigationBar: CustomBottomNavBar(
-          selectedIndex: _selectedIndex,
-          onItemTapped: _onItemTapped,
         ),
       ),
-    );
-  }
-
-  /// Widget สำหรับสร้างการ์ดข้อมูลตรงกลาง (ยังคงเดิม)
-  Widget _buildInfoCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(20),
-        // เพิ่มเงาเล็กน้อยเพื่อให้การ์ดลอยขึ้นมา
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+       // --- Body ที่ถูกแก้ไขใหม่ ---
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, // สำคัญ! เพื่อให้ textAlign.center ทำงานได้
+            children: [
+              Text(
+                'Flash-Dash Delivery',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.jockeyOne(
+                  fontSize: 42,
+                  color: const Color(0xFF004D40),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                '"คลิกเดียว ทันใจ"',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.prompt(
+                  fontSize: 32,
+                  color: const Color(0xFFD32F2F),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'พร้อมให้บริการจัดส่งพัสดุของคุณ',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.prompt(
+                  fontSize: 22,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 40),
+              Image.asset(
+                'assets/image/mainuser.png',
+                height: 250,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      child: Column(
-        children: [
-          Text(
-            'Flash-Dash Delivery',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.jockeyOne(
-              fontSize: 32,
-              color: const Color(0xFF004D40),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '"คลิกเดียว ทันใจ"',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.prompt(
-              fontSize: 22,
-              color: const Color(0xFFD32F2F),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'พร้อมให้บริการจัดส่งพัสดุของคุณ',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.prompt(
-              fontSize: 16,
-              color: Colors.black54,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // *** แก้ path รูป delivery หลักของคุณที่นี่ ***
-          Image.asset(
-            'assets/image/mainuser.png',
-            height: 200,
-          ),
-        ],
+      // --------------------------
+
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        ),
       ),
     );
   }
