@@ -1,12 +1,15 @@
-import 'package:flash_dash_delivery/Rider/mainRider.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flash_dash_delivery/auth/welcome.dart';
-import 'package:get/get.dart';
 
-// --- นี่คือโค้ดของหน้า Sign up as User ทั้งหมด ---
+// --- Imports ที่ต้องเพิ่ม/แก้ไข ---
+import '../api/api_service.dart';
+import '../model/request/register_request.dart';
+import '../user/main_user.dart'; // <-- ตรวจสอบว่า Path ไปยัง MainUserPage ถูกต้อง
+// -------------------------
+
 class SignUpUserScreen extends StatefulWidget {
   const SignUpUserScreen({super.key});
 
@@ -15,62 +18,140 @@ class SignUpUserScreen extends StatefulWidget {
 }
 
 class _SignUpUserScreenState extends State<SignUpUserScreen> {
-  // ตัวแปรสำหรับจัดการแผนที่และตำแหน่ง
+  final _formKey = GlobalKey<FormState>();
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _addressDetailController = TextEditingController();
+
   final MapController _mapController = MapController();
   LatLng? _selectedLocation;
-  String _addressText = 'Tap map or use button to add address';
-  final String _thunderforestApiKey = 'cd5e3bc759644565a4adf9cd53d143be';
 
-  /// ฟังก์ชันสำหรับดึงตำแหน่งปัจจุบัน
-  Future<void> _getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Location services are disabled. Please enable the services',
-          ),
-        ),
+  void _registerCustomer() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (_selectedLocation == null) {
+      // ใช้ Dialog แจ้งเตือนแทน Snackbar
+      Get.dialog(
+        AlertDialog(
+          title: const Text('Missing Information'),
+          content: const Text('Please select an address on the map before proceeding.'),
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: const Text('OK')),
+          ],
+        )
       );
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
+    final userCore = UserCore(
+      name: _nameController.text,
+      phone: _phoneController.text,
+      password: _passwordController.text,
+      imageProfile: "https://example.com/profiles/customer_default.jpg", // ค่าชั่วคราว
+    );
+
+    final address = Address(
+      detail: _addressDetailController.text,
+      coordinates: Coordinates(
+        latitude: _selectedLocation!.latitude,
+        longitude: _selectedLocation!.longitude,
+      ),
+    );
+
+    final payload = RegisterCustomerPayload(userCore: userCore, address: address);
+
+    try {
+      final message = await _apiService.registerCustomer(payload);
+      
+      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
+      await Get.dialog(
+        AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('Success'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                // เมื่อกด OK ให้ไปยังหน้า Dashboard ของ User
+                Get.offAll(() => const MainUserPage());
+              },
+            ),
+          ],
+        ),
+        barrierDismissible: false,
+      );
+      // --- จบส่วนแก้ไข ---
+
+    } catch (e) {
+      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
+      Get.dialog(
+         AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('Error'),
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          actions: [
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Get.back();
+              },
+            ),
+          ],
+        ),
+      );
+      // --- จบส่วนแก้ไข ---
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// ฟังก์ชันสำหรับดึงตำแหน่งปัจจุบัน
+  Future<void> _getCurrentLocation() async {
+    // ... (โค้ดส่วนนี้เหมือนเดิม ไม่ต้องแก้ไข)
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      Get.snackbar('Location Disabled',
+          'Location services are disabled. Please enable them.');
+      return;
+    }
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permissions are denied')),
-        );
+        Get.snackbar('Permission Denied', 'Location permissions are denied');
         return;
       }
     }
-
     if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Location permissions are permanently denied, we cannot request permissions.',
-          ),
-        ),
-      );
+      Get.snackbar('Permission Denied',
+          'Location permissions are permanently denied.');
       return;
     }
-
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+          desiredAccuracy: LocationAccuracy.high);
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
-        _updateAddressText();
-        _mapController.move(_selectedLocation!, 15.0);
+        _mapController.move(_selectedLocation!, 16.0);
       });
     } catch (e) {
-      print("Error getting location: $e");
+      debugPrint("Error getting location: $e");
     }
   }
 
@@ -78,28 +159,25 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   void _handleMapTap(TapPosition tapPosition, LatLng latlng) {
     setState(() {
       _selectedLocation = latlng;
-      _updateAddressText();
     });
   }
 
-  /// อัปเดตข้อความในช่อง Address
-  void _updateAddressText() {
-    if (_selectedLocation != null) {
-      _addressText =
-          'Lat: ${_selectedLocation!.latitude.toStringAsFixed(4)}, Lon: ${_selectedLocation!.longitude.toStringAsFixed(4)}';
-    }
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    _addressDetailController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // โค้ดส่วน UI ทั้งหมดเหมือนเดิม ไม่ต้องแก้ไข
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFC4DFCE), // C4DFCE
-            Color(0xFFDDEBE3), // DDEBE3
-            Color(0xFFF6F8F7), // F6F8F7
-          ],
+          colors: [Color(0xFFC4DFCE), Color(0xFFDDEBE3), Color(0xFFF6F8F7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -108,24 +186,20 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back), // ใช้ไอคอนที่ต้องการ
-            onPressed: () {
-              Get.to(() => WelcomePage());
-            },
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Get.back(),
           ),
-          title: const Text(
-            'Sign up as User',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          title: const Text('Sign up as User',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Form(
+            key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
@@ -134,55 +208,53 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                     alignment: Alignment.bottomRight,
                     children: [
                       const CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Color(0xFF4CAF50),
-                          size: 40,
-                        ),
-                      ),
+                          radius: 50,
+                          backgroundColor: Colors.white,
+                          child: Icon(Icons.camera_alt,
+                              color: Color(0xFF4CAF50), size: 40)),
                       Container(
                         decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add_circle,
-                          color: Color(0xFF4CAF50),
-                          size: 28,
-                        ),
+                            color: Colors.white, shape: BoxShape.circle),
+                        child: const Icon(Icons.add_circle,
+                            color: Color(0xFF4CAF50), size: 28),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 40),
                 _buildTextField(
+                  controller: _phoneController,
                   icon: Icons.phone_outlined,
                   hintText: 'Phone Number',
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v!.isEmpty ? 'Phone is required' : null,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
+                  controller: _passwordController,
                   icon: Icons.lock_outline,
                   hintText: 'Password',
                   obscureText: true,
+                  validator: (v) => (v?.length ?? 0) < 6
+                      ? 'Password must be at least 6 characters'
+                      : null,
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(icon: Icons.person_outline, hintText: 'Name'),
-                const SizedBox(height: 16),
-
-                // --- นี่คือช่องที่เพิ่มเข้ามา ---
-                _buildTextField(icon: Icons.home_outlined, hintText: 'Address'),
-                const SizedBox(height: 16),
-
-                // ---------------------------
                 _buildTextField(
-                  icon: Icons.location_on_outlined,
-                  hintText: _addressText,
+                  controller: _nameController,
+                  icon: Icons.person_outline,
+                  hintText: 'Name',
+                  validator: (v) => v!.isEmpty ? 'Name is required' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // --- แผนที่จริง ---
+                _buildTextField(
+                  controller: _addressDetailController,
+                  icon: Icons.home_outlined,
+                  hintText: 'Address Detail (e.g. House No., Road)',
+                  validator: (v) =>
+                      v!.isEmpty ? 'Address detail is required' : null,
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   height: 200,
                   child: ClipRRect(
@@ -190,20 +262,15 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                     child: FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
-                        initialCenter: const LatLng(
-                          13.7563,
-                          100.5018,
-                        ), // Default to Bangkok
-                        initialZoom: 6.0,
-                        onTap: _handleMapTap, // Handle map taps
+                        initialCenter:
+                            const LatLng(16.47, 102.82), // Default to Khon Kaen
+                        initialZoom: 14.0,
+                        onTap: _handleMapTap,
                       ),
                       children: [
                         TileLayer(
-                          // --- นี่คือส่วนที่แก้ไข ---
                           urlTemplate:
-                              'https://{s}.tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey={apikey}',
-                          additionalOptions: {'apikey': _thunderforestApiKey},
-                          // -------------------------
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         ),
                         if (_selectedLocation != null)
                           MarkerLayer(
@@ -212,11 +279,8 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                                 point: _selectedLocation!,
                                 width: 80,
                                 height: 80,
-                                child: const Icon(
-                                  Icons.location_pin,
-                                  size: 50,
-                                  color: Colors.red,
-                                ),
+                                child: const Icon(Icons.location_pin,
+                                    size: 50, color: Colors.red),
                               ),
                             ],
                           ),
@@ -227,43 +291,32 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'ค้นหาตำแหน่งของฉัน',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  icon: const Icon(Icons.my_location, color: Colors.white),
+                  label: const Text('Find My Location',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
+                      backgroundColor: const Color(0xFF4CAF50),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF69F0AE),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+                        onPressed: _registerCustomer,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF69F0AE),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12))),
+                        child: const Text('Sign Up',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                      ),
                 const SizedBox(height: 20),
               ],
             ),
@@ -274,30 +327,30 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   }
 
   Widget _buildTextField({
+    required TextEditingController controller,
     required IconData icon,
     required String hintText,
+    required String? Function(String?) validator,
     bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
   }) {
-    // ใช้ key เพื่อให้ Flutter รู้ว่าต้อง re-render เมื่อ hintText เปลี่ยน
     return TextFormField(
-      key: ValueKey(hintText),
-      initialValue: hintText.startsWith('Lat:') ? hintText : null,
+      controller: controller,
       obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
       decoration: InputDecoration(
-        hintText: hintText.startsWith('Lat:') ? null : hintText,
+        hintText: hintText,
         prefixIcon: Icon(icon, color: Colors.grey),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 16,
-          horizontal: 20,
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       ),
-      readOnly: hintText.startsWith('Lat:'),
     );
   }
 }
+

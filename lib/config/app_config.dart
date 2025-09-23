@@ -1,3 +1,3 @@
 class AppConfig {
-  static const String baseUrl = 'https://api-oracel999.onrender.com';
+  static const String baseUrl = 'http://192.168.6.1:8080';
 }
