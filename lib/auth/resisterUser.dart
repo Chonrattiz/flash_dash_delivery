@@ -246,11 +246,7 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    {
-                      Get.to(() => const RiderDashboardScreen());
-                    }
-                  },
+                  onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
                     padding: const EdgeInsets.symmetric(vertical: 16),
