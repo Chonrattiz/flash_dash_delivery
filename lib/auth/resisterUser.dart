@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:osm_nominatim/osm_nominatim.dart';
 
 // --- Imports ที่ต้องเพิ่ม/แก้ไข ---
 import '../api/api_service.dart';
@@ -23,8 +24,9 @@ class SignUpUserScreen extends StatefulWidget {
 
 class _SignUpUserScreenState extends State<SignUpUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService(); 
-  final ApiServiceImage _apiServiceimage = ApiServiceImage(); // <-- สร้าง instance สำหรับรูปภาพ
+  final ApiService _apiService = ApiService();
+  final ApiServiceImage _apiServiceimage =
+      ApiServiceImage(); // <-- สร้าง instance สำหรับรูปภาพ
   bool _isLoading = false;
 
   final _phoneController = TextEditingController();
@@ -151,7 +153,9 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
 
     try {
       // 2. อัปโหลดรูปภาพก่อน และรอจนกว่าจะได้ URL กลับมา
-     String imageUrl = await _apiServiceimage.uploadProfileImage(_profileImage!);
+      String imageUrl = await _apiServiceimage.uploadProfileImage(
+        _profileImage!,
+      );
 
       // 3. สร้าง Payload โดยใช้ imageUrl ที่ได้กลับมา
       final userCore = UserCore(
@@ -217,6 +221,35 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
     }
   }
 
+  Future<void> _getAddressFromLatLng(LatLng position) async {
+    try {
+      // Create an instance of Nominatim
+        final nominatim = Nominatim(userAgent: 'flash_dash_delivery/1.0 (66011212129@email.com)');
+
+      // Now call reverseSearch on that instance
+      final place = await nominatim.reverseSearch(
+        lat: position.latitude,
+        lon: position.longitude,
+        addressDetails: true,
+      );
+
+      if (place.address != null) {
+        final String address = place.displayName;
+        setState(() {
+          _addressDetailController.text = address;
+        });
+      } else {
+        _addressDetailController.text = "Could not find address details.";
+      }
+    } catch (e) {
+      debugPrint("Error getting address from Nominatim: $e");
+      Get.snackbar(
+        "Error",
+        "Could not fetch address for the selected location.",
+      );
+    }
+  }
+
   /// ฟังก์ชันสำหรับดึงตำแหน่งปัจจุบัน
   Future<void> _getCurrentLocation() async {
     // ... (โค้ดส่วนนี้เหมือนเดิม ไม่ต้องแก้ไข)
@@ -249,10 +282,15 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      final currentLocation = LatLng(position.latitude, position.longitude);
+
       setState(() {
-        _selectedLocation = LatLng(position.latitude, position.longitude);
-        _mapController.move(_selectedLocation!, 16.0);
+        _selectedLocation = currentLocation;
+        _mapController.move(currentLocation, 16.0);
       });
+
+      // ฟังก์ชันนี้จะเรียกใช้ _getAddressFromLatLng (เวอร์ชันใหม่) โดยอัตโนมัติ
+      await _getAddressFromLatLng(currentLocation);
     } catch (e) {
       debugPrint("Error getting location: $e");
     }
@@ -263,6 +301,8 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
     setState(() {
       _selectedLocation = latlng;
     });
+    // ฟังก์ชันนี้จะเรียกใช้ _getAddressFromLatLng (เวอร์ชันใหม่) โดยอัตโนมัติ
+    _getAddressFromLatLng(latlng);
   }
 
   @override
@@ -377,9 +417,10 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
                 _buildTextField(
                   controller: _addressDetailController,
                   icon: Icons.home_outlined,
-                  hintText: 'Address Detail (e.g. House No., Road)',
+                  hintText: 'Address (from map pin)',
                   validator: (v) =>
-                      v!.isEmpty ? 'Address detail is required' : null,
+                      v!.isEmpty ? 'Please pin your address on the map' : null,
+                  enabled: false,
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -476,12 +517,14 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
     required String? Function(String?) validator,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      enabled: enabled,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: Icon(icon, color: Colors.grey),
