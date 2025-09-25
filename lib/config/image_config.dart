@@ -1,3 +1,3 @@
 class ImageConfig {
-  static const String imageUrl = 'https://node-storage-j4vp.onrender.com/';
+  static const String imageUrl = 'https://node-storage-j4vp.onrender.com';
 }
