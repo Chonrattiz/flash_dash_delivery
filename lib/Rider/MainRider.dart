@@ -1,9 +1,9 @@
+import 'package:flash_dash_delivery/Rider/profile_rider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import '../model/response/login_response.dart';
+import '../config/image_config.dart';
 
-// --- นี่คือโค้ดของหน้า Rider Dashboard ทั้งหมด ---
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
 
@@ -12,45 +12,63 @@ class RiderDashboardScreen extends StatefulWidget {
 }
 
 class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
-  // ตัวแปรสำหรับจัดการ Bottom Navigation Bar
-    int _selectedIndex = 0;  LoginResponse? loginData;
+  int _selectedIndex = 0;
+  LoginResponse? loginData;
+
   @override
   void initState() {
     super.initState();
-    // 2. รับข้อมูลจาก arguments ตอนที่หน้าจอนี้ถูกสร้างขึ้นมาครั้งแรก
-    // เราใช้ initState() เพราะมันจะทำงานแค่ครั้งเดียวตอนเริ่มต้น
     final arguments = Get.arguments;
     if (arguments is LoginResponse) {
-      // ตรวจสอบว่าข้อมูลที่ส่งมาเป็นประเภท LoginResponse จริงๆ
-      // จากนั้นเก็บข้อมูลไว้ในตัวแปร loginData
       setState(() {
         loginData = arguments;
       });
     }
   }
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+
+  // ++ 1. สร้างฟังก์ชันสำหรับนำทางไปหน้า Profile โดยเฉพาะ ++
+  void _navigateToProfile() {
+    Get.to(
+      () => const RiderProfileScreen(),
+      arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
+      transition: Transition.rightToLeft,
+    );
   }
 
-  // --- โค้ดส่วน build() ถูกแก้ไขใหม่ทั้งหมด ---
+  // ++ 2. แก้ไข _onItemTapped ให้เรียกใช้ฟังก์ชันใหม่ ++
+  void _onItemTapped(int index) {
+    if (index == 1) {
+      // ถ้ากดที่ปุ่ม Profile ให้เรียกฟังก์ชันนำทาง
+      _navigateToProfile();
+    } else {
+      // ถ้ากดปุ่มอื่น ให้แค่เปลี่ยน state ของ index
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-       final String username = loginData?.userProfile.name ?? 'Rider'; 
+    final String username = loginData?.userProfile.name ?? 'Rider';
+    final String? imageFilename = loginData?.userProfile.imageProfile;
+
+    final String fullImageUrl =
+        (imageFilename != null && imageFilename.isNotEmpty)
+        ? "${ImageConfig.imageUrl}/upload/$imageFilename"
+        : "";
+
     return Scaffold(
-      backgroundColor: Colors.grey[100], // สีพื้นหลังของ body
-      // เราจะไม่ใช้ appBar ของ Scaffold แต่จะสร้างทุกอย่างใน Column
+      backgroundColor: Colors.grey[100],
       body: Column(
         children: [
-          // ส่วนที่ 1: Custom AppBar จะอยู่บนสุด
-           _buildCustomAppBar(username: username),
-
-          // ส่วนที่ 2: ป้าย "รายการออเดอร์"
-          // เราใช้ Transform.translate เพื่อ "ดึง" วิดเจ็ตนี้ให้ลอยขึ้นไปในแนวตั้ง
+          // ++ 3. ส่งฟังก์ชัน _navigateToProfile เข้าไปใน AppBar ++
+          _buildCustomAppBar(
+            username: username,
+            imageUrl: fullImageUrl,
+            onProfileTap: _navigateToProfile, // <-- ส่งฟังก์ชันเข้าไป
+          ),
           Transform.translate(
-            // offset คือระยะที่จะย้ายวิดเจ็ต (แนวนอน, แนวตั้ง)
-            // ค่าลบในแนวตั้ง (y) หมายถึงการดึงขึ้น
             offset: const Offset(0.0, -24.0),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 40),
@@ -76,11 +94,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               ),
             ),
           ),
-
-          // ส่วนที่ 3: รายการออเดอร์ที่สามารถเลื่อนได้
           Expanded(
             child: SingleChildScrollView(
-              // ปรับ padding ด้านบนเล็กน้อยเพื่อไม่ให้ชิดกับป้ายเกินไป
               padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
               child: Column(
                 children: [
@@ -120,15 +135,19 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  /// Widget สำหรับสร้าง Custom AppBar (โค้ดเดิม ไม่มีการแก้ไข)
-  Widget _buildCustomAppBar({required String username}) {
+  // ++ 4. แก้ไข AppBar ให้รับฟังก์ชัน onProfileTap และเพิ่ม GestureDetector ++
+  Widget _buildCustomAppBar({
+    required String username,
+    String? imageUrl,
+    required VoidCallback onProfileTap, // <-- รับฟังก์ชันเข้ามา
+  }) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
-        height: 186.0, // กำหนดความสูงของ AppBar ให้แน่นอน
+        height: 186.0,
         color: const Color(0xFFCEF1C3),
         child: SafeArea(
-          bottom: false, // ไม่ใช้ SafeArea ด้านล่างเพราะจะติดกับวิดเจ็ตอื่น
+          bottom: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
@@ -153,25 +172,38 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                     ),
                   ],
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.white,
-                      backgroundImage: NetworkImage(
-                        'https://placehold.co/100x100/A0E0A0/000000?text=User',
+                // หุ้ม Column ที่มีรูปและชื่อด้วย GestureDetector
+                GestureDetector(
+                  onTap:
+                      onProfileTap, // <-- เมื่อกด ให้เรียกฟังก์ชันที่ส่งเข้ามา
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.white,
+                        child: (imageUrl == null || imageUrl.isEmpty)
+                            ? const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Colors.grey,
+                              )
+                            : null,
+                        backgroundImage:
+                            (imageUrl != null && imageUrl.isNotEmpty)
+                            ? NetworkImage(imageUrl)
+                            : null,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                     Text(
-                      username,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                      const SizedBox(height: 8),
+                      Text(
+                        username,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -181,12 +213,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  /// Widget สำหรับสร้างการ์ดรายการออเดอร์ (โค้ดเดิม ไม่มีการแก้ไข)
   Widget _buildOrderCard({
     required String pickup,
     required String pickupDetails,
     required String delivery,
   }) {
+    // โค้ดส่วนนี้ไม่มีการแก้ไข
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -227,7 +259,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                         pickupDetails,
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Text(
                         'Delivery: $delivery',
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),

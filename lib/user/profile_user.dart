@@ -72,6 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           end: Alignment.bottomRight,
         ),
       ),
+
       child: Scaffold(
         // **** UI EDIT 2: ทำให้ Scaffold โปร่งใสเพื่อแสดง Gradient ****
         backgroundColor: Colors.transparent,
@@ -87,6 +88,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? CustomBottomNavBar(selectedIndex: 2, loginData: loginData!)
             : null,
       ),
+
+      // **** 2. เพิ่ม bottomNavigationBar และส่งข้อมูลที่จำเป็นไปให้ ****
+  // ถ้ายังไม่มีข้อมูล ไม่ต้องแสดง Navbar
     );
   }
 
@@ -148,7 +152,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 4),
             Text(
               user?.phone ?? '-',
+
               style: GoogleFonts.prompt(fontSize: 20, color: Colors.grey[700]),
+
             ),
             const SizedBox(height: 20),
             ElevatedButton(
