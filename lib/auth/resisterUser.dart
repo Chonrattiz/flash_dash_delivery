@@ -10,6 +10,8 @@ import '../api/api_service.dart';
 import '../model/request/register_request.dart';
 import 'dart:io'; //
 import 'package:image_picker/image_picker.dart';
+import '../api/api_service_image.dart';
+
 // -------------------------
 
 class SignUpUserScreen extends StatefulWidget {
@@ -21,7 +23,8 @@ class SignUpUserScreen extends StatefulWidget {
 
 class _SignUpUserScreenState extends State<SignUpUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService = ApiService(); 
+  final ApiServiceImage _apiServiceimage = ApiServiceImage(); // <-- สร้าง instance สำหรับรูปภาพ
   bool _isLoading = false;
 
   final _phoneController = TextEditingController();
@@ -35,31 +38,69 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
 
+  // **** ฟังก์ชันสำหรับเลือกรูปภาพ (ฉบับแก้ไข) ****
   Future<void> _pickImage() async {
-    // แสดง Bottom Sheet ให้ผู้ใช้เลือกว่าจะถ่ายรูปหรือเลือกจากคลัง
-    await Get.bottomSheet(
-      Container(
-        color: Colors.white,
-        child: Wrap(
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Photo Library'),
-              onTap: () {
-                _getImage(ImageSource.gallery);
-                Get.back(); // ปิด Bottom Sheet
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Camera'),
-              onTap: () {
-                _getImage(ImageSource.camera);
-                Get.back(); // ปิด Bottom Sheet
-              },
-            ),
-          ],
+    // เปลี่ยนจาก Get.bottomSheet มาเป็น Get.dialog เพื่อแสดงผลตรงกลาง
+    await Get.dialog(
+      // ใช้ AlertDialog เป็น Widget หลักสำหรับสร้าง pop-up
+      AlertDialog(
+        // ทำให้ขอบมนสวยงาม
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        // เพิ่ม title ตามที่ต้องการ
+        title: const Text(
+          'Profile Picture',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        // เพิ่ม content เพื่ออธิบายเพิ่มเติม
+        content: const Text(
+          'Please select or take your profile picture.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 15),
+        ),
+        // actions จะแสดงปุ่มต่างๆ แต่เราจะใช้ content ที่ปรับแต่งเองแทน
+        // ดังนั้นเราจะใช้ Column ใน content เพื่อวางตัวเลือก
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        // ใช้ Column เพื่อจัดเรียงตัวเลือกในแนวตั้ง
+        actionsAlignment: MainAxisAlignment.center,
+        actions: <Widget>[
+          Column(
+            mainAxisSize: MainAxisSize.min, // ทำให้ Column สูงเท่าที่จำเป็น
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch, // ทำให้ปุ่มกว้างเต็ม
+            children: <Widget>[
+              // ปุ่มเลือกจากคลังภาพ
+              ElevatedButton.icon(
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Photo Library'),
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: Colors.grey.shade200,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  _getImage(ImageSource.gallery);
+                  Get.back(); // ปิด Dialog
+                },
+              ),
+              const SizedBox(height: 8), // ระยะห่างระหว่างปุ่ม
+              // ปุ่มถ่ายภาพ
+              ElevatedButton.icon(
+                icon: const Icon(Icons.photo_camera),
+                label: const Text('Camera'),
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: Colors.grey.shade200,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  _getImage(ImageSource.camera);
+                  Get.back(); // ปิด Dialog
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -108,31 +149,35 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
       _isLoading = true;
     });
 
-    final userCore = UserCore(
-      name: _nameController.text,
-      phone: _phoneController.text,
-      password: _passwordController.text,
-      imageProfile:
-          "https://example.com/profiles/customer_default.jpg", // ค่าชั่วคราว
-    );
-
-    final address = Address(
-      detail: _addressDetailController.text,
-      coordinates: Coordinates(
-        latitude: _selectedLocation!.latitude,
-        longitude: _selectedLocation!.longitude,
-      ),
-    );
-
-    final payload = RegisterCustomerPayload(
-      userCore: userCore,
-      address: address,
-    );
-
     try {
+      // 2. อัปโหลดรูปภาพก่อน และรอจนกว่าจะได้ URL กลับมา
+     String imageUrl = await _apiServiceimage.uploadProfileImage(_profileImage!);
+
+      // 3. สร้าง Payload โดยใช้ imageUrl ที่ได้กลับมา
+      final userCore = UserCore(
+        name: _nameController.text,
+        phone: _phoneController.text,
+        password: _passwordController.text,
+        imageProfile: imageUrl, // <-- ใช้ URL ที่ได้จากการอัปโหลด
+      );
+
+      final address = Address(
+        detail: _addressDetailController.text,
+        coordinates: Coordinates(
+          latitude: _selectedLocation!.latitude,
+          longitude: _selectedLocation!.longitude,
+        ),
+      );
+
+      final payload = RegisterCustomerPayload(
+        userCore: userCore,
+        address: address,
+      );
+
+      // 4. ส่งข้อมูลทั้งหมดไปลงทะเบียน
       final message = await _apiService.registerCustomer(payload);
 
-      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
+      // 5. แสดงผลเมื่อสำเร็จ
       await Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -143,18 +188,14 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
           actions: [
             TextButton(
               child: const Text('OK'),
-              onPressed: () {
-                // เมื่อกด OK ให้ไปยังหน้า Dashboard ของ User
-                Get.offAll(() => const LoginPage());
-              },
+              onPressed: () => Get.offAll(() => const LoginPage()),
             ),
           ],
         ),
         barrierDismissible: false,
       );
-      // --- จบส่วนแก้ไข ---
     } catch (e) {
-      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
+      // จัดการ Error ที่อาจเกิดจากการอัปโหลดรูป หรือการลงทะเบียน
       Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -163,16 +204,10 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
           title: const Text('Error'),
           content: Text(e.toString().replaceAll('Exception: ', '')),
           actions: [
-            TextButton(
-              child: const Text('Close'),
-              onPressed: () {
-                Get.back();
-              },
-            ),
+            TextButton(child: const Text('Close'), onPressed: () => Get.back()),
           ],
         ),
       );
-      // --- จบส่วนแก้ไข ---
     } finally {
       if (mounted) {
         setState(() {
