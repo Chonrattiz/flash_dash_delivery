@@ -1,11 +1,10 @@
+import 'dart:io'; // เพิ่มเข้ามาเพื่อใช้ตัวแปรประเภท File
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart'; // เพิ่ม import นี้
 import 'package:flash_dash_delivery/auth/login.dart';
-// --- Imports ที่ต้องเพิ่ม/แก้ไข ---
 import '../api/api_service.dart';
 import '../model/request/register_request.dart';
-
-// -------------------------
 
 class SignUpRiderScreen extends StatefulWidget {
   const SignUpRiderScreen({super.key});
@@ -25,24 +24,101 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
 
   bool _isLoading = false;
 
+  // --- State ที่เพิ่มเข้ามาสำหรับจัดการรูปภาพ ---
+  File? _profileImage;
+  File? _vehicleImage;
+  final ImagePicker _picker = ImagePicker();
+  // -----------------------------------------
+
+  // --- ฟังก์ชันสำหรับแสดงตัวเลือก กล้อง/แกลเลอรี ---
+  Future<void> _showImageSourceActionSheet(bool isProfile) async {
+    Get.bottomSheet(
+      SafeArea(
+        child: Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Get.back();
+                _pickImage(ImageSource.gallery, isProfile);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Camera'),
+              onTap: () {
+                Get.back();
+                _pickImage(ImageSource.camera, isProfile);
+              },
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: Colors.white,
+    );
+  }
+
+  // --- ฟังก์ชันสำหรับเลือกรูปภาพ ---
+  Future<void> _pickImage(ImageSource source, bool isProfile) async {
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          if (isProfile) {
+            _profileImage = File(pickedFile.path);
+          } else {
+            _vehicleImage = File(pickedFile.path);
+          }
+        });
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to pick image: $e');
+    }
+  }
+  // --------------------------------
+
   void _registerRider() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    // --- เพิ่มการตรวจสอบว่าผู้ใช้เลือกรูปภาพแล้วหรือยัง ---
+    if (_profileImage == null) {
+      Get.snackbar('Error', 'Please select a profile picture.');
+      return;
+    }
+
+    if (_vehicleImage == null) {
+      Get.snackbar('Error', 'Please upload a vehicle photo.');
+      return;
+    }
+    // ------------------------------------------------
+
     setState(() {
       _isLoading = true;
     });
+
+    // TODO: ในส่วนนี้ คุณจะต้อง implement โค้ดเพื่ออัปโหลดไฟล์รูปภาพ
+    // (_profileImage และ _vehicleImage) ไปยัง Server หรือ Storage ของคุณ
+    // แล้วนำ URL ที่ได้กลับมาใส่ใน payload แทนที่ค่าชั่วคราว
+    // final String profileImageUrl = await uploadImageToServer(_profileImage!);
+    // final String vehicleImageUrl = await uploadImageToServer(_vehicleImage!);
 
     final userCore = UserCore(
       name: _nameController.text,
       phone: _phoneController.text,
       password: _passwordController.text,
-      imageProfile: "https://example.com/profiles/default.jpg", // ค่าชั่วคราว
+      imageProfile:
+          "https://example.com/profiles/default.jpg", // <--- แก้เป็น URL จริง
     );
 
     final riderDetails = RiderDetails(
-      imageVehicle: "https://example.com/vehicles/default.jpg", // ค่าชั่วคราว
+      imageVehicle:
+          "https://example.com/vehicles/default.jpg", // <--- แก้เป็น URL จริง
       vehicleRegistration: _licensePlateController.text,
     );
 
@@ -53,9 +129,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
 
     try {
       final message = await _apiService.registerRider(payload);
-
-      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
-      // แสดง Dialog แจ้งเตือนเมื่อสำเร็จ
       await Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -67,18 +140,14 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
             TextButton(
               child: const Text('OK'),
               onPressed: () {
-                // เมื่อกด OK ให้ไปยังหน้า Dashboard และลบหน้าก่อนหน้าทั้งหมด
                 Get.offAll(() => LoginPage());
               },
             ),
           ],
         ),
-        barrierDismissible: false, // ไม่ให้กดปิด dialog ที่พื้นหลังได้
+        barrierDismissible: false,
       );
-      // --- จบส่วนแก้ไข ---
     } catch (e) {
-      // --- ส่วนที่แก้ไข: เปลี่ยนจาก Snackbar เป็น Dialog ---
-      // แสดง Dialog แจ้งเตือนเมื่อเกิด Error
       Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -90,14 +159,12 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
             TextButton(
               child: const Text('Close'),
               onPressed: () {
-                // เมื่อกด Close ให้ปิดแค่ Dialog
                 Get.back();
               },
             ),
           ],
         ),
       );
-      // --- จบส่วนแก้ไข ---
     } finally {
       if (mounted) {
         setState(() {
@@ -154,30 +221,39 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                 children: [
                   const SizedBox(height: 20),
                   Center(
-                    child: Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        const CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: Color(0xFF4CAF50),
-                            size: 40,
+                    // --- แก้ไข Widget รูปโปรไฟล์ ---
+                    child: GestureDetector(
+                      onTap: () => _showImageSourceActionSheet(true),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _profileImage != null
+                                ? FileImage(_profileImage!)
+                                : null,
+                            child: _profileImage == null
+                                ? const Icon(
+                                    Icons.camera_alt,
+                                    color: Color(0xFF4CAF50),
+                                    size: 40,
+                                  )
+                                : null,
                           ),
-                        ),
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add_circle,
+                              color: Color(0xFF4CAF50),
+                              size: 28,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.add_circle,
-                            color: Color(0xFF4CAF50),
-                            size: 28,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -187,8 +263,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     hintText: 'Phone Number',
                     keyboardType: TextInputType.phone,
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'Please enter phone number';
+                      }
                       return null;
                     },
                   ),
@@ -199,8 +276,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     hintText: 'Password',
                     obscureText: true,
                     validator: (value) {
-                      if (value == null || value.length < 6)
+                      if (value == null || value.length < 6) {
                         return 'Password must be at least 6 characters';
+                      }
                       return null;
                     },
                   ),
@@ -210,8 +288,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     icon: Icons.person_outline,
                     hintText: 'Name',
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'Please enter your name';
+                      }
                       return null;
                     },
                   ),
@@ -221,8 +300,9 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                     icon: Icons.pin_outlined,
                     hintText: 'License plate',
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'Please enter license plate';
+                      }
                       return null;
                     },
                   ),
@@ -290,6 +370,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
     );
   }
 
+  // --- แก้ไข Widget อัปโหลดรูปยานพาหนะ ---
   Widget _buildVehiclePhotoUpload() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -301,15 +382,23 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
         children: [
           const Icon(Icons.photo_camera_outlined, color: Colors.grey),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Text(
-              'vehicle photo',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              _vehicleImage == null
+                  ? 'Vehicle Photo'
+                  // แสดงชื่อไฟล์รูปภาพที่เลือก
+                  : _vehicleImage!.path.split('/').last,
+              style: TextStyle(
+                color: _vehicleImage == null ? Colors.grey : Colors.black,
+                fontSize: 16,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           TextButton(
             onPressed: () {
-              // TODO: Implement vehicle photo upload logic
+              // เรียกฟังก์ชันเลือกรูปภาพ
+              _showImageSourceActionSheet(false);
             },
             child: const Text(
               'Upload',
