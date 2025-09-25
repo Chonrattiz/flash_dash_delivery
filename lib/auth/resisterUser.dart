@@ -8,7 +8,8 @@ import 'package:latlong2/latlong.dart';
 // --- Imports ที่ต้องเพิ่ม/แก้ไข ---
 import '../api/api_service.dart';
 import '../model/request/register_request.dart';
-
+import 'dart:io'; //
+import 'package:image_picker/image_picker.dart';
 // -------------------------
 
 class SignUpUserScreen extends StatefulWidget {
@@ -31,6 +32,53 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
   final MapController _mapController = MapController();
   LatLng? _selectedLocation;
 
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    // แสดง Bottom Sheet ให้ผู้ใช้เลือกว่าจะถ่ายรูปหรือเลือกจากคลัง
+    await Get.bottomSheet(
+      Container(
+        color: Colors.white,
+        child: Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Photo Library'),
+              onTap: () {
+                _getImage(ImageSource.gallery);
+                Get.back(); // ปิด Bottom Sheet
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Camera'),
+              onTap: () {
+                _getImage(ImageSource.camera);
+                Get.back(); // ปิด Bottom Sheet
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ฟังก์ชันย่อยสำหรับเรียกใช้ ImagePicker
+  Future<void> _getImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(source: source);
+
+      if (pickedFile != null) {
+        setState(() {
+          _profileImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to pick image: $e');
+    }
+  }
+
   void _registerCustomer() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -48,6 +96,11 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
           ],
         ),
       );
+      return;
+    }
+
+    if (_profileImage == null) {
+      Get.snackbar('Error', 'Please select a profile image');
       return;
     }
 
@@ -221,30 +274,43 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
               children: [
                 const SizedBox(height: 20),
                 Center(
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      const CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Color(0xFF4CAF50),
-                          size: 40,
+                  child: InkWell(
+                    // ทำให้ Widget กดได้
+                    onTap: _pickImage, // เมื่อกดให้เรียกฟังก์ชันเลือกรูป
+                    borderRadius: BorderRadius.circular(50),
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.white,
+                          // --- ส่วนสำคัญ: แสดงรูปภาพที่เลือก ---
+                          // ถ้ามีรูป (_profileImage != null) ให้แสดงรูปนั้น
+                          // ถ้ายังไม่มี ให้แสดง Icon กล้องเหมือนเดิม
+                          backgroundImage: _profileImage != null
+                              ? FileImage(_profileImage!)
+                              : null,
+                          child: _profileImage == null
+                              ? const Icon(
+                                  Icons.camera_alt,
+                                  color: Color(0xFF4CAF50),
+                                  size: 40,
+                                )
+                              : null, // ถ้ามีรูปแล้ว ไม่ต้องแสดง child
                         ),
-                      ),
-                      Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add_circle,
+                            color: Color(0xFF4CAF50),
+                            size: 28,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.add_circle,
-                          color: Color(0xFF4CAF50),
-                          size: 28,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),
