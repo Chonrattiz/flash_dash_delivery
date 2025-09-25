@@ -2,7 +2,7 @@ import 'package:flash_dash_delivery/Rider/profile_rider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../model/response/login_response.dart';
-import '../config/image_config.dart'; // ++ 1. เพิ่ม import สำหรับ ImageConfig ++
+import '../config/image_config.dart';
 
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -26,15 +26,22 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     }
   }
 
+  // ++ 1. สร้างฟังก์ชันสำหรับนำทางไปหน้า Profile โดยเฉพาะ ++
+  void _navigateToProfile() {
+    Get.to(
+      () => const RiderProfileScreen(),
+      arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
+      transition: Transition.rightToLeft,
+    );
+  }
+
+  // ++ 2. แก้ไข _onItemTapped ให้เรียกใช้ฟังก์ชันใหม่ ++
   void _onItemTapped(int index) {
     if (index == 1) {
-      // ถ้ากด Profile
-      Get.to(
-        () => const RiderProfileScreen(),
-        arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
-        transition: Transition.rightToLeft, // Animation (optional)
-      );
+      // ถ้ากดที่ปุ่ม Profile ให้เรียกฟังก์ชันนำทาง
+      _navigateToProfile();
     } else {
+      // ถ้ากดปุ่มอื่น ให้แค่เปลี่ยน state ของ index
       setState(() {
         _selectedIndex = index;
       });
@@ -44,23 +51,22 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final String username = loginData?.userProfile.name ?? 'Rider';
-    // ดึงแค่ชื่อไฟล์รูปภาพออกมา
     final String? imageFilename = loginData?.userProfile.imageProfile;
 
-    // ++ 2. ประกอบร่าง URL เต็มในตำแหน่งที่ถูกต้อง (ตรงนี้) ++
     final String fullImageUrl =
         (imageFilename != null && imageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$imageFilename" // <-- สมมติว่า path คือ /upload/
+        ? "${ImageConfig.imageUrl}/upload/$imageFilename"
         : "";
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: Column(
         children: [
-          // ++ 3. ส่ง URL ที่ประกอบร่างเสร็จแล้วเข้าไปใน AppBar ++
+          // ++ 3. ส่งฟังก์ชัน _navigateToProfile เข้าไปใน AppBar ++
           _buildCustomAppBar(
             username: username,
-            imageUrl: fullImageUrl, // <-- ส่ง fullImageUrl ที่เป็น URL เต็ม
+            imageUrl: fullImageUrl,
+            onProfileTap: _navigateToProfile, // <-- ส่งฟังก์ชันเข้าไป
           ),
           Transform.translate(
             offset: const Offset(0.0, -24.0),
@@ -129,8 +135,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  // ส่วนนี้ไม่ต้องแก้ไขแล้ว เพราะรับ URL เต็มมาใช้งานได้เลย
-  Widget _buildCustomAppBar({required String username, String? imageUrl}) {
+  // ++ 4. แก้ไข AppBar ให้รับฟังก์ชัน onProfileTap และเพิ่ม GestureDetector ++
+  Widget _buildCustomAppBar({
+    required String username,
+    String? imageUrl,
+    required VoidCallback onProfileTap, // <-- รับฟังก์ชันเข้ามา
+  }) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
@@ -162,32 +172,38 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                     ),
                   ],
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.white,
-                      child: (imageUrl == null || imageUrl.isEmpty)
-                          ? const Icon(
-                              Icons.person,
-                              size: 40,
-                              color: Colors.grey,
-                            )
-                          : null,
-                      backgroundImage: (imageUrl != null && imageUrl.isNotEmpty)
-                          ? NetworkImage(imageUrl)
-                          : null,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      username,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                // หุ้ม Column ที่มีรูปและชื่อด้วย GestureDetector
+                GestureDetector(
+                  onTap:
+                      onProfileTap, // <-- เมื่อกด ให้เรียกฟังก์ชันที่ส่งเข้ามา
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.white,
+                        child: (imageUrl == null || imageUrl.isEmpty)
+                            ? const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Colors.grey,
+                              )
+                            : null,
+                        backgroundImage:
+                            (imageUrl != null && imageUrl.isNotEmpty)
+                            ? NetworkImage(imageUrl)
+                            : null,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        username,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -243,7 +259,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                         pickupDetails,
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Text(
                         'Delivery: $delivery',
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
