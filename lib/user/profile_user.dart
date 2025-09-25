@@ -39,10 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Sign Out'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               Get.offAll(() => const LoginPage());
@@ -61,7 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? (loginData!.roleSpecificData as List).cast<Address>()
         : <Address>[];
 
-    final String fullImageUrl = (user?.imageProfile != null && user!.imageProfile.isNotEmpty)
+    final String fullImageUrl =
+        (user?.imageProfile != null && user!.imageProfile.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/${user.imageProfile}"
         : "";
 
@@ -79,7 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       bottomNavigationBar: loginData != null
           ? CustomBottomNavBar(
               selectedIndex: 2, // 2 คือ index ของหน้า Profile
-              loginData: loginData!, // ส่งข้อมูลที่หน้านี้ได้รับมา ให้ Navbar จัดการต่อ
+              loginData:
+                  loginData!, // ส่งข้อมูลที่หน้านี้ได้รับมา ให้ Navbar จัดการต่อ
             )
           : null, // ถ้ายังไม่มีข้อมูล ไม่ต้องแสดง Navbar
     );
@@ -125,7 +124,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             CircleAvatar(
               radius: 50,
               backgroundColor: Colors.white,
-              backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+              backgroundImage: imageUrl.isNotEmpty
+                  ? NetworkImage(imageUrl)
+                  : null,
               child: imageUrl.isEmpty
                   ? const Icon(Icons.person, size: 50, color: Colors.grey)
                   : null,
@@ -141,15 +142,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 4),
             Text(
               user?.phone ?? '-',
-              style: GoogleFonts.prompt(
-                fontSize: 16,
-                color: Colors.grey[700],
-              ),
+              style: GoogleFonts.prompt(fontSize: 16, color: Colors.grey[700]),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Get.snackbar('Coming Soon', 'Edit Profile page is not yet implemented.');
+                Get.snackbar(
+                  'Coming Soon',
+                  'Edit Profile page is not yet implemented.',
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4CAF50),
@@ -157,7 +158,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 'แก้ไขโปรไฟล์',
@@ -190,7 +194,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  Get.snackbar('Coming Soon', 'Add Address page is not yet implemented.');
+                  Get.snackbar(
+                    'Coming Soon',
+                    'Add Address page is not yet implemented.',
+                  );
                 },
                 child: Text(
                   'เพิ่มที่อยู่',
@@ -230,12 +237,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       elevation: 1,
       shadowColor: Colors.grey.withOpacity(0.2),
       child: ListTile(
-        title: Text(title, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
+        title: Text(
+          title,
+          style: GoogleFonts.prompt(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(details, style: GoogleFonts.prompt()),
         trailing: IconButton(
           icon: const Icon(Icons.edit_outlined, color: Colors.grey),
           onPressed: () {
-            Get.snackbar('Coming Soon', 'Edit Address for "$title" is not yet implemented.');
+            Get.snackbar(
+              'Coming Soon',
+              'Edit Address for "$title" is not yet implemented.',
+            );
           },
         ),
       ),

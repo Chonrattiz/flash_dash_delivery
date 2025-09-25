@@ -23,8 +23,9 @@ class SignUpUserScreen extends StatefulWidget {
 
 class _SignUpUserScreenState extends State<SignUpUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService(); 
-  final ApiServiceImage _apiServiceimage = ApiServiceImage(); // <-- สร้าง instance สำหรับรูปภาพ
+  final ApiService _apiService = ApiService();
+  final ApiServiceImage _apiServiceimage =
+      ApiServiceImage(); // <-- สร้าง instance สำหรับรูปภาพ
   bool _isLoading = false;
 
   final _phoneController = TextEditingController();
@@ -151,7 +152,9 @@ class _SignUpUserScreenState extends State<SignUpUserScreen> {
 
     try {
       // 2. อัปโหลดรูปภาพก่อน และรอจนกว่าจะได้ URL กลับมา
-     String imageUrl = await _apiServiceimage.uploadProfileImage(_profileImage!);
+      String imageUrl = await _apiServiceimage.uploadProfileImage(
+        _profileImage!,
+      );
 
       // 3. สร้าง Payload โดยใช้ imageUrl ที่ได้กลับมา
       final userCore = UserCore(

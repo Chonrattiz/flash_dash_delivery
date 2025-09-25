@@ -98,6 +98,7 @@ class Coordinates {
 }
 
 // Model for Rider details (used for riders).
+
 class Rider {
   final String imageVehicle;
   final String vehicleRegistration;
@@ -106,8 +107,9 @@ class Rider {
 
   factory Rider.fromJson(Map<String, dynamic> json) {
     return Rider(
-      imageVehicle: json['image_vehicle'] ?? '',
-      vehicleRegistration: json['vehicle_registration'] ?? '',
+      // ต้องเป็น 'ImageVehicle' และ 'VehicleRegistration' (ตัวพิมพ์ใหญ่)
+      imageVehicle: json['ImageVehicle'] ?? '',
+      vehicleRegistration: json['VehicleRegistration'] ?? '',
     );
   }
 }
