@@ -8,7 +8,7 @@ import 'package:latlong2/latlong.dart';
 // --- Imports ที่ต้องเพิ่ม/แก้ไข ---
 import '../api/api_service.dart';
 import '../model/request/register_request.dart';
-import '../user/main_user.dart'; // <-- ตรวจสอบว่า Path ไปยัง MainUserPage ถูกต้อง
+
 // -------------------------
 
 class SignUpUserScreen extends StatefulWidget {
