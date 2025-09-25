@@ -1,9 +1,12 @@
-import 'dart:io'; // เพิ่มเข้ามาเพื่อใช้ตัวแปรประเภท File
+import 'dart:io';
+import 'package:flash_dash_delivery/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart'; // เพิ่ม import นี้
-import 'package:flash_dash_delivery/auth/login.dart';
+import 'package:image_picker/image_picker.dart';
+
+// --- Imports ที่จำเป็น ---
 import '../api/api_service.dart';
+import '../api/api_service_image.dart'; // <-- import service สำหรับอัปโหลดรูป
 import '../model/request/register_request.dart';
 
 class SignUpRiderScreen extends StatefulWidget {
@@ -16,6 +19,8 @@ class SignUpRiderScreen extends StatefulWidget {
 class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
+  // ++ สร้าง instance ของ ApiServiceImage
+  final ApiServiceImage _apiServiceImage = ApiServiceImage();
 
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,13 +29,10 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
 
   bool _isLoading = false;
 
-  // --- State ที่เพิ่มเข้ามาสำหรับจัดการรูปภาพ ---
   File? _profileImage;
   File? _vehicleImage;
   final ImagePicker _picker = ImagePicker();
-  // -----------------------------------------
 
-  // --- ฟังก์ชันสำหรับแสดงตัวเลือก กล้อง/แกลเลอรี ---
   Future<void> _showImageSourceActionSheet(bool isProfile) async {
     Get.bottomSheet(
       SafeArea(
@@ -59,7 +61,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
     );
   }
 
-  // --- ฟังก์ชันสำหรับเลือกรูปภาพ ---
   Future<void> _pickImage(ImageSource source, bool isProfile) async {
     try {
       final pickedFile = await _picker.pickImage(
@@ -79,14 +80,13 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
       Get.snackbar('Error', 'Failed to pick image: $e');
     }
   }
-  // --------------------------------
 
+  // ++ ฟังก์ชัน _registerRider ที่แก้ไขใหม่ทั้งหมด ++
   void _registerRider() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // --- เพิ่มการตรวจสอบว่าผู้ใช้เลือกรูปภาพแล้วหรือยัง ---
     if (_profileImage == null) {
       Get.snackbar('Error', 'Please select a profile picture.');
       return;
@@ -96,39 +96,46 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
       Get.snackbar('Error', 'Please upload a vehicle photo.');
       return;
     }
-    // ------------------------------------------------
 
     setState(() {
       _isLoading = true;
     });
 
-    // TODO: ในส่วนนี้ คุณจะต้อง implement โค้ดเพื่ออัปโหลดไฟล์รูปภาพ
-    // (_profileImage และ _vehicleImage) ไปยัง Server หรือ Storage ของคุณ
-    // แล้วนำ URL ที่ได้กลับมาใส่ใน payload แทนที่ค่าชั่วคราว
-    // final String profileImageUrl = await uploadImageToServer(_profileImage!);
-    // final String vehicleImageUrl = await uploadImageToServer(_vehicleImage!);
-
-    final userCore = UserCore(
-      name: _nameController.text,
-      phone: _phoneController.text,
-      password: _passwordController.text,
-      imageProfile:
-          "https://example.com/profiles/default.jpg", // <--- แก้เป็น URL จริง
-    );
-
-    final riderDetails = RiderDetails(
-      imageVehicle:
-          "https://example.com/vehicles/default.jpg", // <--- แก้เป็น URL จริง
-      vehicleRegistration: _licensePlateController.text,
-    );
-
-    final payload = RegisterRiderPayload(
-      userCore: userCore,
-      riderDetails: riderDetails,
-    );
-
     try {
+      // 1. อัปโหลดรูปภาพทั้งสองไฟล์พร้อมกันโดยใช้ Future.wait
+      //    เพื่อความรวดเร็วและประสิทธิภาพ
+      final List<String> imageUrls = await Future.wait([
+        _apiServiceImage.uploadProfileImage(_profileImage!),
+        _apiServiceImage.uploadProfileImage(
+          _vehicleImage!,
+        ), // <-- สร้างฟังก์ชันนี้ใน ApiServiceImage
+      ]);
+
+      final String profileImageUrl = imageUrls[0];
+      final String vehicleImageUrl = imageUrls[1];
+
+      // 2. สร้าง Payload โดยใช้ URL ที่ได้กลับมา
+      final userCore = UserCore(
+        name: _nameController.text,
+        phone: _phoneController.text,
+        password: _passwordController.text,
+        imageProfile: profileImageUrl, // <-- ใช้ URL จริง
+      );
+
+      final riderDetails = RiderDetails(
+        imageVehicle: vehicleImageUrl, // <-- ใช้ URL จริง
+        vehicleRegistration: _licensePlateController.text,
+      );
+
+      final payload = RegisterRiderPayload(
+        userCore: userCore,
+        riderDetails: riderDetails,
+      );
+
+      // 3. ส่งข้อมูลไปลงทะเบียน
       final message = await _apiService.registerRider(payload);
+
+      // 4. แสดงผลเมื่อสำเร็จ
       await Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -140,7 +147,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
             TextButton(
               child: const Text('OK'),
               onPressed: () {
-                Get.offAll(() => LoginPage());
+                Get.offAll(() => const LoginPage());
               },
             ),
           ],
@@ -148,6 +155,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
         barrierDismissible: false,
       );
     } catch (e) {
+      // จัดการ Error ที่อาจเกิดขึ้น
       Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -185,6 +193,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // โค้ดส่วน UI ทั้งหมดสามารถใช้ของเดิมได้เลย ไม่ต้องแก้ไข
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -221,7 +230,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
                 children: [
                   const SizedBox(height: 20),
                   Center(
-                    // --- แก้ไข Widget รูปโปรไฟล์ ---
                     child: GestureDetector(
                       onTap: () => _showImageSourceActionSheet(true),
                       child: Stack(
@@ -370,7 +378,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
     );
   }
 
-  // --- แก้ไข Widget อัปโหลดรูปยานพาหนะ ---
   Widget _buildVehiclePhotoUpload() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -386,7 +393,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
             child: Text(
               _vehicleImage == null
                   ? 'Vehicle Photo'
-                  // แสดงชื่อไฟล์รูปภาพที่เลือก
                   : _vehicleImage!.path.split('/').last,
               style: TextStyle(
                 color: _vehicleImage == null ? Colors.grey : Colors.black,
@@ -397,7 +403,6 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
           ),
           TextButton(
             onPressed: () {
-              // เรียกฟังก์ชันเลือกรูปภาพ
               _showImageSourceActionSheet(false);
             },
             child: const Text(
