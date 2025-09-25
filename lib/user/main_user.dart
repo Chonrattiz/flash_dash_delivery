@@ -12,7 +12,6 @@ class MainUserPage extends StatefulWidget {
 }
 
 class _MainUserPageState extends State<MainUserPage> {
-  int _selectedIndex = 0;
 
   LoginResponse? loginData;
   @override
@@ -28,11 +27,6 @@ class _MainUserPageState extends State<MainUserPage> {
         loginData = arguments;
       });
     }
-  }
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   @override
@@ -162,10 +156,12 @@ class _MainUserPageState extends State<MainUserPage> {
       ),
       // --------------------------
 
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-        ),
+     bottomNavigationBar: loginData != null
+            ? CustomBottomNavBar(
+                selectedIndex: 0, // 0 คือ index ของหน้า Home
+                loginData: loginData!, // <-- ส่งข้อมูลที่หน้านี้ได้รับมา ให้ Navbar
+              )
+            : null, // ถ้ายังโหลดข้อมูลไม่เสร็จ ไม่ต้องแสดง Navbar
       ),
     );
   }
