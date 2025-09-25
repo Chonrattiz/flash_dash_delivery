@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import '../model/response/login_response.dart';
 
 // --- นี่คือโค้ดของหน้า Rider Dashboard ทั้งหมด ---
 class RiderDashboardScreen extends StatefulWidget {
@@ -10,8 +13,21 @@ class RiderDashboardScreen extends StatefulWidget {
 
 class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   // ตัวแปรสำหรับจัดการ Bottom Navigation Bar
-  int _selectedIndex = 0;
-
+    int _selectedIndex = 0;  LoginResponse? loginData;
+  @override
+  void initState() {
+    super.initState();
+    // 2. รับข้อมูลจาก arguments ตอนที่หน้าจอนี้ถูกสร้างขึ้นมาครั้งแรก
+    // เราใช้ initState() เพราะมันจะทำงานแค่ครั้งเดียวตอนเริ่มต้น
+    final arguments = Get.arguments;
+    if (arguments is LoginResponse) {
+      // ตรวจสอบว่าข้อมูลที่ส่งมาเป็นประเภท LoginResponse จริงๆ
+      // จากนั้นเก็บข้อมูลไว้ในตัวแปร loginData
+      setState(() {
+        loginData = arguments;
+      });
+    }
+  }
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -21,13 +37,14 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   // --- โค้ดส่วน build() ถูกแก้ไขใหม่ทั้งหมด ---
   @override
   Widget build(BuildContext context) {
+       final String username = loginData?.userProfile.name ?? 'Rider'; 
     return Scaffold(
       backgroundColor: Colors.grey[100], // สีพื้นหลังของ body
       // เราจะไม่ใช้ appBar ของ Scaffold แต่จะสร้างทุกอย่างใน Column
       body: Column(
         children: [
           // ส่วนที่ 1: Custom AppBar จะอยู่บนสุด
-          _buildCustomAppBar(),
+           _buildCustomAppBar(username: username),
 
           // ส่วนที่ 2: ป้าย "รายการออเดอร์"
           // เราใช้ Transform.translate เพื่อ "ดึง" วิดเจ็ตนี้ให้ลอยขึ้นไปในแนวตั้ง
@@ -104,7 +121,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   /// Widget สำหรับสร้าง Custom AppBar (โค้ดเดิม ไม่มีการแก้ไข)
-  Widget _buildCustomAppBar() {
+  Widget _buildCustomAppBar({required String username}) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
@@ -147,8 +164,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Rider Name',
+                     Text(
+                      username,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,

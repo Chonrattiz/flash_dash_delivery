@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'navbottom.dart'; // ตรวจสอบว่า path ไปยังไฟล์ navbottom ถูกต้อง
-
+import '../model/response/login_response.dart';
 class MainUserPage extends StatefulWidget {
   const MainUserPage({super.key});
 
@@ -12,6 +14,21 @@ class MainUserPage extends StatefulWidget {
 class _MainUserPageState extends State<MainUserPage> {
   int _selectedIndex = 0;
 
+  LoginResponse? loginData;
+  @override
+  void initState() {
+    super.initState();
+    // 2. รับข้อมูลจาก arguments ตอนที่หน้าจอนี้ถูกสร้างขึ้นมาครั้งแรก
+    // เราใช้ initState() เพราะมันจะทำงานแค่ครั้งเดียวตอนเริ่มต้น
+    final arguments = Get.arguments;
+    if (arguments is LoginResponse) {
+      // ตรวจสอบว่าข้อมูลที่ส่งมาเป็นประเภท LoginResponse จริงๆ
+      // จากนั้นเก็บข้อมูลไว้ในตัวแปร loginData
+      setState(() {
+        loginData = arguments;
+      });
+    }
+  }
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -21,6 +38,7 @@ class _MainUserPageState extends State<MainUserPage> {
   @override
   Widget build(BuildContext context) {
     // 1. ใช้ Container เป็น Widget ตัวนอกสุดเพื่อกำหนดพื้นหลัง Gradient
+     final String username = loginData?.userProfile.name ?? 'User';
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -55,7 +73,7 @@ class _MainUserPageState extends State<MainUserPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Welcome Poder !!',
+                    'Welcome $username !!',
                     style: GoogleFonts.prompt(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
