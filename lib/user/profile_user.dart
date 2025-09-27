@@ -1,3 +1,5 @@
+import 'package:flash_dash_delivery/user/edit_profile.dart';
+import 'package:flash_dash_delivery/user/map_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,7 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
   }
- //ออกจากระบบนะ
+
+  //ออกจากระบบนะ
   void _signOut() {
     Get.dialog(
       AlertDialog(
@@ -90,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
 
       // **** 2. เพิ่ม bottomNavigationBar และส่งข้อมูลที่จำเป็นไปให้ ****
-  // ถ้ายังไม่มีข้อมูล ไม่ต้องแสดง Navbar
+      // ถ้ายังไม่มีข้อมูล ไม่ต้องแสดง Navbar
     );
   }
 
@@ -108,11 +111,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 TextButton.icon(
                   onPressed: _signOut,
-                  icon: const Icon(Icons.logout, color: Colors.red, size: 20,fontWeight: FontWeight.w600),
+                  icon: const Icon(
+                    Icons.logout,
+                    color: Colors.red,
+                    size: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
                   label: Text(
                     'Sign out',
-                    style: GoogleFonts.prompt(color: Colors.red, fontSize: 16,fontWeight: FontWeight.w600,),
-                
+                    style: GoogleFonts.prompt(
+                      color: Colors.red,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -120,7 +131,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-              
                 Text(
                   'โปรไฟล์ของฉัน',
                   style: GoogleFonts.prompt(
@@ -154,14 +164,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               user?.phone ?? '-',
 
               style: GoogleFonts.prompt(fontSize: 20, color: Colors.grey[700]),
-
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Get.snackbar(
-                  'Coming Soon',
-                  'Edit Profile page is not yet implemented.',
+                Get.off(
+                  () => EditProfileScreen(loginData: loginData!),
+                  transition: Transition.rightToLeft,
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -205,10 +214,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  Get.snackbar(
-                    'Coming Soon',
-                    'Add Address page is not yet implemented.',
+                onPressed: () async {
+                  final result = await Get.to<AddressResult>(
+                    // ส่ง loginData เข้าไปใน Constructor
+                    () => MapPickerScreen(loginData: loginData!),
+                    transition: Transition.downToUp,
                   );
                 },
                 child: Text(
@@ -263,10 +273,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         subtitle: Text(details, style: GoogleFonts.prompt()),
         trailing: IconButton(
           icon: const Icon(Icons.edit_outlined, color: Colors.grey),
-          onPressed: () {
-            Get.snackbar(
-              'Coming Soon',
-              'Edit Address for "$title" is not yet implemented.',
+          onPressed: () async {
+            final result = await Get.to<AddressResult>(
+              // ส่ง loginData เข้าไปใน Constructor
+              () => MapPickerScreen(loginData: loginData!),
+              transition: Transition.downToUp,
             );
           },
         ),
