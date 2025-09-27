@@ -1,21 +1,34 @@
-import 'package:flash_dash_delivery/model/response/login_response.dart';
-import 'package:flash_dash_delivery/user/main_user.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
-class CreateDeliveryScreen extends StatefulWidget {  
+import '../model/response/login_response.dart';
+import 'main_user.dart';
+
+// สร้าง Model สำหรับเก็บข้อมูลสินค้า
+class DeliveryItemDetails {
+  final File image;
+  final String description;
+
+  DeliveryItemDetails({required this.image, required this.description});
+}
+
+class CreateDeliveryScreen extends StatefulWidget {
   final LoginResponse loginData;
   const CreateDeliveryScreen({super.key, required this.loginData});
-
 
   @override
   State<CreateDeliveryScreen> createState() => _CreateDeliveryScreenState();
 }
 
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
-  // ใช้ ValueNotifier เพื่อจัดการว่าที่อยู่ไหนถูกเลือก
+  // State สำหรับจัดการข้อมูล
   final ValueNotifier<int> _selectedAddressIndex = ValueNotifier<int>(0);
+  final ImagePicker _picker = ImagePicker();
+  DeliveryItemDetails? _deliveryItem;
+  File? _riderImage;
 
   @override
   void dispose() {
@@ -23,17 +36,411 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     super.dispose();
   }
 
+  // --- 1. ฟังก์ชันจัดการรูปภาพ ---
+  Future<File?> _pickImageFromSource(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(source: source);
+      if (pickedFile != null) {
+        return File(pickedFile.path);
+      }
+    } catch (e) {
+      Get.snackbar('เกิดข้อผิดพลาด', 'ไม่สามารถเลือกรูปภาพได้: $e');
+    }
+    return null;
+  }
+
+  void _showImageSourcePicker(Function(File) onImageSelected) {
+    Get.dialog(
+      AlertDialog(
+        title: Text('เลือกรูปภาพ', style: GoogleFonts.prompt()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text('เลือกจากคลังภาพ', style: GoogleFonts.prompt()),
+              onTap: () async {
+                Get.back();
+                final image = await _pickImageFromSource(ImageSource.gallery);
+                if (image != null) onImageSelected(image);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text('ถ่ายภาพ', style: GoogleFonts.prompt()),
+              onTap: () async {
+                Get.back();
+                final image = await _pickImageFromSource(ImageSource.camera);
+                if (image != null) onImageSelected(image);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- 2. ฟังก์ชันจัดการ Dialog ต่างๆ ---
+
+  // Dialog สำหรับ "เพิ่มรายการใหม่"
+  Future<void> _showAddItemDialog() async {
+    File? itemImage;
+    final descriptionController = TextEditingController();
+
+    final result = await Get.dialog<DeliveryItemDetails>(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.transparent,
+        child: StatefulBuilder(
+          // ใช้ StatefulBuilder เพื่ออัปเดต UI ภายใน Dialog
+          builder: (context, setDialogState) {
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Container หลักสำหรับเนื้อหา
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5), // สีพื้นหลังเทาอ่อน
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // --- Title ---
+                        Center(
+                          child: Text(
+                            'เพิ่มรายการใหม่',
+                            style: GoogleFonts.prompt(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4CAF50),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // --- รูปสินค้า ---
+                        Text(
+                          'รูปสินค้า',
+                          style: GoogleFonts.prompt(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: GestureDetector(
+                            onTap: () => _showImageSourcePicker(
+                              (image) =>
+                                  setDialogState(() => itemImage = image),
+                            ),
+                            child: Container(
+                              height: 120,
+                              width: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade300),
+                                image: itemImage != null
+                                    ? DecorationImage(
+                                        image: FileImage(itemImage!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: itemImage == null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.image_outlined,
+                                            size: 40,
+                                            color: Colors.grey[400],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Icon(
+                                            Icons.add_circle_outline,
+                                            size: 20,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // --- รายละเอียดสินค้า ---
+                        Text(
+                          'รายละเอียดสินค้า :',
+                          style: GoogleFonts.prompt(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: descriptionController,
+                          decoration: InputDecoration(
+                            hintText: 'รายละเอียดสินค้า',
+                            hintStyle: GoogleFonts.prompt(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                          ),
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // --- ปุ่มเพิ่มรายการ ---
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (itemImage != null &&
+                                  descriptionController.text.isNotEmpty) {
+                                final newItem = DeliveryItemDetails(
+                                  image: itemImage!,
+                                  description: descriptionController.text,
+                                );
+                                Get.back(result: newItem);
+                              } else {
+                                Get.snackbar(
+                                  'ผิดพลาด',
+                                  'กรุณาใส่รูปและรายละเอียดสินค้า',
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3498DB),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              'เพิ่มรายการ',
+                              style: GoogleFonts.prompt(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // --- ปุ่ม Close ---
+                Positioned(
+                  top: -10,
+                  right: -10,
+                  child: GestureDetector(
+                    onTap: () => Get.back(),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _deliveryItem = result);
+    }
+  }
+
+  void _showItemDetailDialog(DeliveryItemDetails item) {
+    Get.dialog(
+      // ใช้ Dialog widget เพื่อให้เราควบคุม UI ได้เต็มที่
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.transparent, // ทำให้พื้นหลัง dialog หลักโปร่งใส
+        child: Stack(
+          // clipBehavior: Clip.none, // อนุญาตให้ปุ่ม Close อยู่นอกกรอบได้เล็กน้อย
+          children: [
+            // Container หลักสำหรับเนื้อหา
+            Container(
+              margin: const EdgeInsets.only(
+                top: 8,
+                right: 8,
+              ), // เว้นที่ให้ปุ่ม Close
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // --- Header สีเขียว ---
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+
+                      child: Text(
+                        'รายละเอียด',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.prompt(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4CAF50),
+                        ),
+                      ),
+                    ),
+                    // --- Content สีขาว ---
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              item.image,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'รายละเอียดสินค้า :',
+                            style: GoogleFonts.prompt(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Text(
+                              item.description,
+                              style: GoogleFonts.prompt(fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // --- ปุ่ม Close (กากบาท) ---
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () => Get.back(),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Dialog สำหรับ "ยืนยันการจัดส่ง"
+  void _showConfirmationDialog() {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        // ใช้ title สำหรับรูปภาพ และ content สำหรับข้อความ
+        title: Center(
+          child: Image.asset('assets/image/question_mark.png', height: 60),
+        ),
+        content: Text(
+          'ต้องการจัดส่งสินค้าใช่หรือไม่?',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        // ย้ายปุ่มมาไว้ใน 'actions'
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Get.back(),
+                  child: Text('ยกเลิก', style: GoogleFonts.prompt()),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Get.back();
+                    Get.snackbar('สำเร็จ', 'สร้างการจัดส่งเรียบร้อยแล้ว');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF69F0AE),
+                  ),
+                  child: Text('ยืนยัน', style: GoogleFonts.prompt()),
+                ),
+              ),
+            ],
+          ),
+        ],
+        // จัดปุ่มให้อยู่ตรงกลางและเพิ่มระยะห่าง
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      // ใช้ Gradient เดียวกันกับหน้าอื่นๆ เพื่อความสอดคล้อง
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFC4DFCE), // C4DFCE
-            Color(0xFFDDEBE3), // DDEBE3
-            Color(0xFFF6F8F7), // F6F8F7
-          ],
+          colors: [Color(0xFFC4DFCE), Color(0xFFDDEBE3), Color(0xFFF6F8F7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -45,8 +452,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
             onPressed: () => Get.off(
               () => const MainUserPage(),
-              arguments: widget.loginData, // ใช้ข้อมูลที่หน้านี้ได้รับมาส่งกลับไป
-              transition: Transition.leftToRight, // เพิ่ม animation ให้เหมือนการ back
+              arguments: widget.loginData,
+              transition: Transition.leftToRight,
             ),
           ),
           title: Text(
@@ -65,118 +472,36 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- ส่วน ผู้รับ ---
               _buildSectionTitle('ผู้รับ'),
               const SizedBox(height: 8),
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'ค้นหาด้วยหมายเลขโทรศัพท์',
-                  hintStyle: GoogleFonts.prompt(color: Colors.grey[600]),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
+              _buildReceiverField(),
               const SizedBox(height: 24),
 
-              // --- ส่วน ที่อยู่จัดส่ง ---
               _buildSectionTitle('ที่อยู่จัดส่ง'),
               const SizedBox(height: 8),
-              ValueListenableBuilder<int>(
-                valueListenable: _selectedAddressIndex,
-                builder: (context, selectedIndex, child) {
-                  return Column(
-                    children: [
-                      _buildAddressCard(
-                        title: 'Home',
-                        address: '123 Elm Street, Anytown',
-                        isSelected: selectedIndex == 0,
-                        onTap: () {
-                          _selectedAddressIndex.value = 0;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAddressCard(
-                        title: 'Home2',
-                        address: '120 LA Street, Boytown',
-                        isSelected: selectedIndex == 1,
-                        onTap: () {
-                          _selectedAddressIndex.value = 1;
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
+              _buildAddressSelection(),
               const SizedBox(height: 24),
 
-              // --- ส่วน รายการ ---
               _buildSectionTitle('รายการ'),
               const SizedBox(height: 8),
-              _buildItemField('สินค้าที่ 1'),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Implement logic to add a new item field
-                  Get.snackbar('Action', 'Add new item clicked!');
-                },
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Color(0xFFB3E59F),
-                      child: Icon(Icons.add, color: Colors.black54, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'เพิ่มรายการใหม่',
-                      style: GoogleFonts.prompt(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // --- 3. UI ส่วนรายการสินค้า ---
+              if (_deliveryItem != null)
+                _buildItemCard(_deliveryItem!)
+              else
+                _buildAddItemButton(),
               const SizedBox(height: 24),
 
-              // --- ส่วน ถ่ายรูป ---
               _buildSectionTitle('ถ่ายรูปบอกไรเดอร์'),
               const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Implement image picking logic
-                  Get.snackbar('Action', 'Pick image clicked!');
-                },
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.camera_alt_outlined,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
+              // --- 4. UI ส่วนเลือกรูปให้ไรเดอร์ ---
+              _buildRiderPhotoPicker(),
               const SizedBox(height: 32),
 
-              // --- ปุ่มสร้างการจัดส่ง ---
+              // --- 5. ปุ่มสร้างการจัดส่ง ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implement create delivery logic
-                  },
+                  onPressed: _showConfirmationDialog,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -201,18 +526,153 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
-  // Widget สำหรับสร้าง Title ของแต่ละ Section
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.prompt(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+  // --- Widget ย่อยๆ สำหรับสร้าง UI ---
+
+  Widget _buildItemCard(DeliveryItemDetails item) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: InkWell(
+        // ใช้ InkWell ห่อ child ของ Card
+        onTap: () =>
+            _showItemDetailDialog(item), // <-- เพิ่ม onTap ให้เรียก Dialog
+        borderRadius: BorderRadius.circular(
+          12,
+        ), // ทำให้ ripple effect ขอบมนตาม Card
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  item.image,
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  item.description,
+                  style: GoogleFonts.prompt(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.receipt_long_outlined, color: Colors.grey),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  // Widget สำหรับสร้างการ์ดที่อยู่
+  Widget _buildAddItemButton() {
+    return GestureDetector(
+      onTap: _showAddItemDialog,
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 16,
+            backgroundColor: Color(0xFFB3E59F),
+            child: Icon(Icons.add, color: Colors.black54, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'เพิ่มรายการใหม่',
+            style: GoogleFonts.prompt(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRiderPhotoPicker() {
+    return GestureDetector(
+      onTap: () => _showImageSourcePicker(
+        (image) => setState(() => _riderImage = image),
+      ),
+      child: Container(
+        height: 150,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          image: _riderImage != null
+              ? DecorationImage(
+                  image: FileImage(_riderImage!),
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
+        child: _riderImage == null
+            ? const Center(
+                child: Icon(
+                  Icons.camera_alt_outlined,
+                  size: 50,
+                  color: Colors.grey,
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600),
+    );
+  }
+
+  Widget _buildReceiverField() {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'ค้นหาด้วยหมายเลขโทรศัพท์',
+        hintStyle: GoogleFonts.prompt(color: Colors.grey[600]),
+        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressSelection() {
+    return ValueListenableBuilder<int>(
+      valueListenable: _selectedAddressIndex,
+      builder: (context, selectedIndex, child) {
+        return Column(
+          children: [
+            _buildAddressCard(
+              title: 'Home',
+              address: '123 Elm Street, Anytown',
+              isSelected: selectedIndex == 0,
+              onTap: () => _selectedAddressIndex.value = 0,
+            ),
+            const SizedBox(height: 12),
+            _buildAddressCard(
+              title: 'Home2',
+              address: '120 LA Street, Boytown',
+              isSelected: selectedIndex == 1,
+              onTap: () => _selectedAddressIndex.value = 1,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildAddressCard({
     required String title,
     required String address,
@@ -251,31 +711,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 ),
                 Text(
                   address,
-                  style: GoogleFonts.prompt(
-                    color: Colors.grey[600],
-                  ),
+                  style: GoogleFonts.prompt(color: Colors.grey[600]),
                 ),
               ],
-            )
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // Widget สำหรับสร้างช่องกรอก "รายการ"
-  Widget _buildItemField(String hint) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.prompt(color: Colors.grey[600]),
-        prefixIcon: const Icon(Icons.inventory_2_outlined, color: Colors.grey),
-        suffixIcon: const Icon(Icons.calendar_today_outlined, color: Colors.grey),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
         ),
       ),
     );
