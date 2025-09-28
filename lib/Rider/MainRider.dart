@@ -1,4 +1,5 @@
 import 'package:flash_dash_delivery/Rider/profile_rider.dart';
+import 'package:flash_dash_delivery/Rider/rider_order_details_screen.dart'; // 1. เพิ่ม import สำหรับหน้ารายละเอียด
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../model/response/login_response.dart';
@@ -26,7 +27,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     }
   }
 
-  // ++ 1. สร้างฟังก์ชันสำหรับนำทางไปหน้า Profile โดยเฉพาะ ++
+  // ฟังก์ชันสำหรับนำทางไปหน้า Profile
   void _navigateToProfile() {
     Get.to(
       () => const RiderProfileScreen(),
@@ -35,7 +36,15 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  // ++ 2. แก้ไข _onItemTapped ให้เรียกใช้ฟังก์ชันใหม่ ++
+  // ++ 2. สร้างฟังก์ชันสำหรับนำทางไปหน้ารายละเอียดออเดอร์ ++
+  void _navigateToOrderDetails() {
+    Get.to(
+      () => const RiderOrderDetailsScreen(),
+      arguments: loginData, // ส่งข้อมูลผู้ใช้ (Rider) ไปด้วย
+    );
+  }
+
+  // จัดการการกดที่ BottomNavigationBar
   void _onItemTapped(int index) {
     if (index == 1) {
       // ถ้ากดที่ปุ่ม Profile ให้เรียกฟังก์ชันนำทาง
@@ -62,7 +71,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
       backgroundColor: Colors.grey[100],
       body: Column(
         children: [
-          // ++ 3. ส่งฟังก์ชัน _navigateToProfile เข้าไปใน AppBar ++
           _buildCustomAppBar(
             username: username,
             imageUrl: fullImageUrl,
@@ -135,11 +143,10 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  // ++ 4. แก้ไข AppBar ให้รับฟังก์ชัน onProfileTap และเพิ่ม GestureDetector ++
   Widget _buildCustomAppBar({
     required String username,
     String? imageUrl,
-    required VoidCallback onProfileTap, // <-- รับฟังก์ชันเข้ามา
+    required VoidCallback onProfileTap,
   }) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
@@ -172,10 +179,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                     ),
                   ],
                 ),
-                // หุ้ม Column ที่มีรูปและชื่อด้วย GestureDetector
                 GestureDetector(
-                  onTap:
-                      onProfileTap, // <-- เมื่อกด ให้เรียกฟังก์ชันที่ส่งเข้ามา
+                  onTap: onProfileTap,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -218,7 +223,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     required String pickupDetails,
     required String delivery,
   }) {
-    // โค้ดส่วนนี้ไม่มีการแก้ไข
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -273,7 +277,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             Align(
               alignment: Alignment.center,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed:
+                    _navigateToOrderDetails, // <-- 3. แก้ไข onPressed ให้เรียกฟังก์ชัน
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0FC964),
                   foregroundColor: Colors.white,
