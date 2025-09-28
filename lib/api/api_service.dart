@@ -6,7 +6,7 @@ import '../config/app_config.dart';
 import '../model/request/login_request.dart';
 import '../model/request/register_request.dart';
 import '../model/response/login_response.dart';
-
+import '../model/request/update_profile_request.dart';
 class ApiService {
   final String _baseUrl = AppConfig.baseUrl;
 
@@ -67,6 +67,31 @@ class ApiService {
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to register rider');
+    }
+  }
+
+  // **** เพิ่มฟังก์ชันใหม่สำหรับอัปเดตโปรไฟล์ ****
+  Future<LoginResponse> updateProfile({
+    required String token, // ต้องใช้ Token เพื่อยืนยันตัวตน
+    required UpdateProfilePayload payload,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/user/profile'), // Endpoint จากฝั่ง Go
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // <-- ส่ง Token ไปใน Header
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // Backend ของคุณจะส่งข้อมูลที่อัปเดตแล้วกลับมาใน key "updatedData"
+      // เราจึงนำมาแปลงเป็น LoginResponse เพื่อส่งกลับไปให้หน้า Profile
+      return LoginResponse.fromJson(responseBody['updatedData']);
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to update profile');
     }
   }
 }

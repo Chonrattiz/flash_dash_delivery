@@ -31,6 +31,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+   // --- 1. ฟังก์ชันสำหรับนำทางไปหน้าแก้ไขโปรไฟล์ และรอรับข้อมูลกลับมา ---
+  Future<void> _navigateToEditProfile() async {
+    if (loginData == null) return;
+
+    // ใช้ await เพื่อ "รอ" ให้หน้า EditProfile ปิดและส่งผลลัพธ์กลับมา
+    final result = await Get.to<LoginResponse>(
+      () => EditProfileScreen(loginData: loginData!),
+      transition: Transition.rightToLeft,
+    );
+
+    // ตรวจสอบว่ามีข้อมูลใหม่ (result) ส่งกลับมาหรือไม่
+    if (result != null) {
+      // ถ้ามี, ให้อัปเดต state ของหน้านี้ด้วยข้อมูลใหม่
+      setState(() {
+        loginData = result;
+      });
+      Get.snackbar(
+        'สำเร็จ',
+        'ข้อมูลโปรไฟล์ของคุณถูกอัปเดตแล้ว',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    }
+  }
+  
+  // --- 2. ฟังก์ชันสำหรับนำทางไปหน้าแผนที่ และรอรับข้อมูลกลับมา ---
+  Future<void> _navigateAndHandleAddress({Address? existingAddress}) async {
+    if (loginData == null) return;
+
+    final result = await Get.to<AddressResult>(
+      () => MapPickerScreen(loginData: loginData!),
+      transition: Transition.downToUp,
+    );
+
+    if (result != null) {
+      // TODO: เรียก API เพื่อเพิ่มหรือแก้ไขที่อยู่ตรงนี้
+      // if (existingAddress == null) {
+      //   // เรียก API เพิ่มที่อยู่ใหม่
+      // } else {
+      //   // เรียก API อัปเดตที่อยู่เดิมโดยใช้ existingAddress.id
+      // }
+      Get.snackbar(
+        'สำเร็จ',
+        'ที่อยู่ใหม่คือ: ${result.address}',
+        backgroundColor: Colors.blue,
+        colorText: Colors.white,
+      );
+      // TODO: หลังจาก API ทำงานสำเร็จ, ให้อัปเดต loginData ด้วยรายการที่อยู่ใหม่ที่ได้จาก Backend
+    }
+  }
+
   //ออกจากระบบนะ
   void _signOut() {
     Get.dialog(
@@ -245,6 +296,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 return _buildAddressCard(
                   title: 'Address ${index + 1}',
                   details: address.detail,
+                  // ส่งฟังก์ชันจัดการที่อยู่เข้าไป (สำหรับแก้ไขที่อยู่เดิม)
+                  onEdit: () => _navigateAndHandleAddress(existingAddress: address),
                 );
               },
             ),
@@ -253,7 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAddressCard({required String title, required String details}) {
+  Widget _buildAddressCard({required String title, required String details, required VoidCallback onEdit,}) {
     // **** UI EDIT 4: ทำให้การ์ดที่อยู่โปร่งแสงและมีเส้นขอบ ****
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -265,21 +318,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Colors.white.withOpacity(0.5),
         ), // เพิ่มเส้นขอบบางๆ
       ),
-      child: ListTile(
-        title: Text(
-          title,
-          style: GoogleFonts.prompt(fontWeight: FontWeight.w600),
-        ),
+       child: ListTile(
+        title: Text(title, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
         subtitle: Text(details, style: GoogleFonts.prompt()),
         trailing: IconButton(
           icon: const Icon(Icons.edit_outlined, color: Colors.grey),
-          onPressed: () async {
-            final result = await Get.to<AddressResult>(
-              // ส่ง loginData เข้าไปใน Constructor
-              () => MapPickerScreen(loginData: loginData!),
-              transition: Transition.downToUp,
-            );
-          },
+          // **** แก้ไข: เรียกใช้ onEdit ที่ส่งเข้ามา ****
+          onPressed: onEdit,
         ),
       ),
     );
