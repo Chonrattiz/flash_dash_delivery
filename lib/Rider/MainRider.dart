@@ -32,7 +32,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     Get.to(
       () => const RiderProfileScreen(),
       arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
-      transition: Transition.rightToLeft,
+      transition: Transition.fadeIn,
     );
   }
 
@@ -41,6 +41,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     Get.to(
       () => const RiderOrderDetailsScreen(),
       arguments: loginData, // ส่งข้อมูลผู้ใช้ (Rider) ไปด้วย
+      transition: Transition.fadeIn,
     );
   }
 
