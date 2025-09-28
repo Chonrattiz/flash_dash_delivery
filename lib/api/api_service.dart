@@ -1,19 +1,20 @@
 import 'dart:convert';
+import '../model/request/register_request.dart' as req;
+import '../model/response/login_response.dart' as res;
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
 // Import the new models we created
 import '../model/request/login_request.dart';
-import '../model/request/register_request.dart';
-import '../model/response/login_response.dart';
 import '../model/request/update_profile_request.dart';
 import '../model/request/update_profile_rider_request.dart';
+import '../model/request/address_request.dart';
 
 class ApiService {
   final String _baseUrl = AppConfig.baseUrl;
 
   // New function for user login
-  Future<LoginResponse> login(LoginRequest payload) async {
+  Future<res.LoginResponse> login(LoginRequest payload) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/login'), // The endpoint from your Go backend
       headers: <String, String>{
@@ -23,9 +24,9 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      // If the server returns a 200 OK response, parse the JSON.
+      print("DEBUG LOGIN RESPONSE: ${response.body}");
       final responseBody = jsonDecode(response.body);
-      return LoginResponse.fromJson(responseBody);
+      return res.LoginResponse.fromJson(responseBody);
     } else {
       // If the server did not return a 200 OK response,
       // then throw an exception.
@@ -37,7 +38,7 @@ class ApiService {
   // --- Your existing register functions below ---
 
   // ฟังก์ชันสำหรับสมัครสมาชิก Customer
-  Future<String> registerCustomer(RegisterCustomerPayload payload) async {
+  Future<String> registerCustomer(req.RegisterCustomerPayload payload) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/register/customer'),
       headers: <String, String>{
@@ -55,7 +56,7 @@ class ApiService {
   }
 
   // ฟังก์ชันสำหรับสมัครสมาชิก Rider
-  Future<String> registerRider(RegisterRiderPayload payload) async {
+  Future<String> registerRider(req.RegisterRiderPayload payload) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/register/rider'),
       headers: <String, String>{
@@ -73,7 +74,7 @@ class ApiService {
   }
 
   // **** เพิ่มฟังก์ชันใหม่สำหรับอัปเดตโปรไฟล์ ****
-  Future<LoginResponse> updateProfile({
+  Future<res.LoginResponse> updateProfile({
     required String token,
     required UpdateProfilePayload payload,
   }) async {
@@ -89,7 +90,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
       // ✅ ใช้ทั้ง body เลย ไม่ต้องไปหา updatedData
-      return LoginResponse.fromJson(responseBody);
+      return res.LoginResponse.fromJson(responseBody);
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update profile');
@@ -97,7 +98,7 @@ class ApiService {
   }
 
   // +++ Add this new function to update a Rider's profile +++
-  Future<LoginResponse> updateRiderProfile({
+  Future<res.LoginResponse> updateRiderProfile({
     required String token,
     required UpdateRiderProfilePayload payload,
   }) async {
@@ -113,10 +114,60 @@ class ApiService {
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
       // The Go backend returns the updated data in the "updatedData" key
-      return LoginResponse.fromJson(responseBody['updatedData']);
+      return res.LoginResponse.fromJson(responseBody['updatedData']);
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update rider profile');
+    }
+  }
+
+  // **** ฟังก์ชันใหม่สำหรับ "เพิ่ม" ที่อยู่ ****
+  Future<List<res.Address>> addAddress({
+    required String token,
+    required AddressPayload payload,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/user/addresses'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    if (response.statusCode == 201) {
+      final responseBody = jsonDecode(response.body);
+      final List<dynamic> addressList = responseBody['addresses'];
+      return addressList.map((json) => res.Address.fromJson(json)).toList();
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to add address');
+    }
+  }
+
+  // **** ฟังก์ชันใหม่สำหรับ "อัปเดต" ที่อยู่ ****
+  Future<List<res.Address>> updateAddress({
+    required String token,
+    required String addressId,
+    required AddressPayload payload,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/user/addresses/$addressId'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      final List<dynamic> addressList = responseBody['addresses'];
+      // ตอนนี้ Dart รู้จัก Address.fromJson แล้ว
+      return addressList.map((json) => res.Address.fromJson(json)).toList();
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to update address');
     }
   }
 }

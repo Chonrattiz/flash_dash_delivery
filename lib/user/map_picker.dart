@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flash_dash_delivery/user/profile_user.dart';
+import 'package:flash_dash_delivery/model/response/login_response.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
@@ -8,9 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:osm_nominatim/osm_nominatim.dart';
 import 'package:geolocator/geolocator.dart';
-import '../model/response/login_response.dart';
 
-// สร้าง Class เพื่อจัดระเบียบข้อมูลที่จะส่งกลับไป
+// ใช้คลาสนี้ส่งข้อมูลกลับ
 class AddressResult {
   final LatLng coordinates;
   final String address;
@@ -19,9 +18,14 @@ class AddressResult {
 }
 
 class MapPickerScreen extends StatefulWidget {
-  const MapPickerScreen({super.key, required LoginResponse loginData});
-  
-  get loginData => null;
+  final LoginResponse loginData;
+  final Address? existingAddress; // 👈 ใช้เช็คว่าเป็น add หรือ edit
+
+  const MapPickerScreen({
+    super.key,
+    required this.loginData,
+    this.existingAddress,
+  });
 
   @override
   State<MapPickerScreen> createState() => _MapPickerScreenState();
@@ -33,34 +37,49 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   Timer? _debounce;
   bool _isLoading = false;
 
-  // ตำแหน่งเริ่มต้น (มหาวิทยาลัยมหาสารคาม)
+  // พิกัดเริ่มต้น
   final LatLng _initialCenter = const LatLng(16.2462, 103.2520);
 
   @override
   void initState() {
     super.initState();
-    _determinePosition();
+
+    if (widget.existingAddress != null) {
+      // ถ้าแก้ไข → set ค่าเก่า
+      _addressController.text = widget.existingAddress!.detail;
+      _mapController.move(
+        LatLng(
+          widget.existingAddress!.coordinates.latitude,
+          widget.existingAddress!.coordinates.longitude,
+        ),
+
+        16.0,
+      );
+    } else {
+      // ถ้าเพิ่มใหม่ → ใช้ตำแหน่งปัจจุบัน
+      _determinePosition();
+    }
   }
 
   // ฟังก์ชันดึงตำแหน่งปัจจุบัน
   Future<void> _determinePosition() async {
-    // ... (โค้ดขอ permission เหมือนหน้าสมัครสมาชิก) ...
     try {
       Position position = await Geolocator.getCurrentPosition();
       _mapController.move(LatLng(position.latitude, position.longitude), 16.0);
     } catch (e) {
-      // ถ้าเกิดข้อผิดพลาด ให้ใช้ตำแหน่งเริ่มต้นแทน
       _mapController.move(_initialCenter, 16.0);
     }
   }
 
   // ฟังก์ชันแปลงพิกัดเป็นที่อยู่
   Future<void> _getAddressFromLatLng(LatLng position) async {
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      final nominatim = Nominatim(userAgent: 'flash_dash_delivery/1.0 (66011212129@email.com)');
-
-      // Now call reverseSearch on that instance
+      final nominatim = Nominatim(
+        userAgent: 'flash_dash_delivery/1.0 (contact@email.com)',
+      );
       final place = await nominatim.reverseSearch(
         lat: position.latitude,
         lon: position.longitude,
@@ -74,7 +93,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     } catch (e) {
       _addressController.text = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
     } finally {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -112,13 +133,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             ],
           ),
 
-          // หมุดปักตรงกลาง
+          // หมุดกลาง
           const Center(
-            child: Icon(
-              Icons.location_pin,
-              size: 50,
-              color: Colors.red,
-            ),
+            child: Icon(Icons.location_pin, size: 50, color: Colors.red),
           ),
 
           // ปุ่ม Back
@@ -130,13 +147,13 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 backgroundColor: Colors.white.withOpacity(0.8),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () =>Get.back(),
+                  onPressed: () => Get.back(),
                 ),
               ),
             ),
           ),
 
-          // กล่องแสดงที่อยู่และปุ่มยืนยัน
+          // กล่องแสดงที่อยู่ + ปุ่มยืนยัน
           Positioned(
             bottom: 0,
             left: 0,
@@ -179,13 +196,23 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          if (_mapController.camera.center != null && _addressController.text.isNotEmpty) {
+                          if (_mapController.camera.center != null &&
+                              _addressController.text.isNotEmpty) {
                             final result = AddressResult(
                               coordinates: _mapController.camera.center,
                               address: _addressController.text,
                             );
-                            // ส่งผลลัพธ์กลับไปหน้าโปรไฟล์
-                            Get.back(result: result);
+
+                            // ส่งกลับ พร้อม mode (add / edit)
+                            Get.back(
+                              result: {
+                                "mode": widget.existingAddress == null
+                                    ? "add"
+                                    : "edit",
+                                "data": result,
+                                "oldAddress": widget.existingAddress,
+                              },
+                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -196,7 +223,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                           ),
                         ),
                         child: Text(
-                          'ยืนยันตำแหน่งนี้',
+                          widget.existingAddress == null
+                              ? 'บันทึกที่อยู่นี้'
+                              : 'อัปเดตที่อยู่นี้',
                           style: GoogleFonts.prompt(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

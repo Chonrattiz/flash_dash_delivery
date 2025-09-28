@@ -1,6 +1,3 @@
-// This file contains all the models needed to parse the successful login response from the backend.
-
-// The main container for the entire login response.
 class LoginResponse {
   final String message;
   final String idToken;
@@ -16,29 +13,29 @@ class LoginResponse {
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    // First, parse the user profile to determine the role.
-    final userProfile = UserProfile.fromJson(json['userProfile']);
-    dynamic specificData;
-
-    // Based on the role, parse the roleSpecificData accordingly.
-    if (json['roleSpecificData'] != null) {
-      if (userProfile.role == 'customer') {
-        // If customer, it's a list of addresses.
-        var addressList = json['roleSpecificData'] as List;
-        specificData = addressList.map((i) => Address.fromJson(i)).toList();
-      } else if (userProfile.role == 'rider') {
-        // If rider, it's a single rider object.
-        specificData = Rider.fromJson(json['roleSpecificData']);
-      }
-    }
-
-    return LoginResponse(
-      message: json['message'],
-      idToken: json['idToken'],
-      userProfile: userProfile,
-      roleSpecificData: specificData,
-    );
+  if (json['userProfile'] == null) {
+    throw Exception("Invalid response: userProfile is null");
   }
+
+  final userProfile = UserProfile.fromJson(json['userProfile']);
+  dynamic specificData;
+
+  if (json['roleSpecificData'] != null) {
+    if (userProfile.role == 'customer') {
+      var addressList = json['roleSpecificData'] as List;
+      specificData = addressList.map((i) => Address.fromJson(i)).toList();
+    } else if (userProfile.role == 'rider') {
+      specificData = Rider.fromJson(json['roleSpecificData']);
+    }
+  }
+
+  return LoginResponse(
+    message: json['message'] ?? '',
+    idToken: json['idToken'] ?? '',
+    userProfile: userProfile,
+    roleSpecificData: specificData,
+  );
+}
 }
 
 // Model for the 'userProfile' part of the response.
@@ -109,7 +106,7 @@ class Rider {
     return Rider(
       // ต้องเป็น 'ImageVehicle' และ 'VehicleRegistration' (ตัวพิมพ์ใหญ่)
       imageVehicle: json['ImageVehicle'] ?? '',
-      vehicleRegistration: json['VehicleRegistration'] ?? '',
+      vehicleRegistration: json['vehicle_registration'] ?? '',
     );
   }
 }
