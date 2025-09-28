@@ -31,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-   // --- 1. ฟังก์ชันสำหรับนำทางไปหน้าแก้ไขโปรไฟล์ และรอรับข้อมูลกลับมา ---
+  // --- 1. ฟังก์ชันสำหรับนำทางไปหน้าแก้ไขโปรไฟล์ และรอรับข้อมูลกลับมา ---
   Future<void> _navigateToEditProfile() async {
     if (loginData == null) return;
 
@@ -55,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
-  
+
   // --- 2. ฟังก์ชันสำหรับนำทางไปหน้าแผนที่ และรอรับข้อมูลกลับมา ---
   Future<void> _navigateAndHandleAddress({Address? existingAddress}) async {
     if (loginData == null) return;
@@ -162,12 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 TextButton.icon(
                   onPressed: _signOut,
-                  icon: const Icon(
-                    Icons.logout,
-                    color: Colors.red,
-                    size: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  icon: const Icon(Icons.logout, color: Colors.red, size: 20),
                   label: Text(
                     'Sign out',
                     style: GoogleFonts.prompt(
@@ -297,7 +292,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Address ${index + 1}',
                   details: address.detail,
                   // ส่งฟังก์ชันจัดการที่อยู่เข้าไป (สำหรับแก้ไขที่อยู่เดิม)
-                  onEdit: () => _navigateAndHandleAddress(existingAddress: address),
+                  onEdit: () =>
+                      _navigateAndHandleAddress(existingAddress: address),
                 );
               },
             ),
@@ -306,7 +302,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAddressCard({required String title, required String details, required VoidCallback onEdit,}) {
+  Widget _buildAddressCard({
+    required String title,
+    required String details,
+    required VoidCallback onEdit,
+  }) {
     // **** UI EDIT 4: ทำให้การ์ดที่อยู่โปร่งแสงและมีเส้นขอบ ****
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -318,8 +318,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Colors.white.withOpacity(0.5),
         ), // เพิ่มเส้นขอบบางๆ
       ),
-       child: ListTile(
-        title: Text(title, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
+      child: ListTile(
+        title: Text(
+          title,
+          style: GoogleFonts.prompt(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(details, style: GoogleFonts.prompt()),
         trailing: IconButton(
           icon: const Icon(Icons.edit_outlined, color: Colors.grey),
