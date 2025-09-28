@@ -38,7 +38,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   bool _isLoading = false;
 
   // พิกัดเริ่มต้น
-  final LatLng _initialCenter = const LatLng(16.2462, 103.2520);
+  LatLng? _initialCenter;
 
   @override
   void initState() {
@@ -47,27 +47,41 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     if (widget.existingAddress != null) {
       // ถ้าแก้ไข → set ค่าเก่า
       _addressController.text = widget.existingAddress!.detail;
-      _mapController.move(
-        LatLng(
-          widget.existingAddress!.coordinates.latitude,
-          widget.existingAddress!.coordinates.longitude,
-        ),
 
-        16.0,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(
+          LatLng(
+            widget.existingAddress!.coordinates.latitude,
+            widget.existingAddress!.coordinates.longitude,
+          ),
+          16.0,
+        );
+      });
     } else {
       // ถ้าเพิ่มใหม่ → ใช้ตำแหน่งปัจจุบัน
-      _determinePosition();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _determinePosition();
+      });
     }
   }
 
   // ฟังก์ชันดึงตำแหน่งปัจจุบัน
+  // ฟังก์ชันหาตำแหน่งจริง
   Future<void> _determinePosition() async {
     try {
       Position position = await Geolocator.getCurrentPosition();
-      _mapController.move(LatLng(position.latitude, position.longitude), 16.0);
+      setState(() {
+        _initialCenter = LatLng(position.latitude, position.longitude);
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(_initialCenter!, 16.0);
+      });
     } catch (e) {
-      _mapController.move(_initialCenter, 16.0);
+      // fallback ถ้าเปิด GPS ไม่ได้
+      setState(() {
+        _initialCenter = const LatLng(16.2462, 103.2520);
+      });
     }
   }
 
@@ -99,6 +113,47 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     }
   }
 
+  // ฟังก์ชันแสดง Dialog สำเร็จ
+  void _showResultDialog({
+    required String title,
+    required String imagePath,
+    required Map<String, dynamic> result,
+  }) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.only(top: 16, right: 16),
+        title: Align(
+          alignment: Alignment.topRight,
+          child: InkWell(
+            onTap: () {
+              Get.back(); // ปิด dialog
+              Get.back(result: result); // ส่งข้อมูลกลับ Profile
+            },
+            child: const Icon(Icons.close, color: Colors.grey),
+          ),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(imagePath, height: 50),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: GoogleFonts.prompt(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+      barrierDismissible: true,
+    );
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -115,7 +170,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _initialCenter,
+              initialCenter: _initialCenter ?? const LatLng(16.2462, 103.2520),
               initialZoom: 16.0,
               onPositionChanged: (position, hasGesture) {
                 if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -198,20 +253,23 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                         onPressed: () {
                           if (_mapController.camera.center != null &&
                               _addressController.text.isNotEmpty) {
-                            final result = AddressResult(
-                              coordinates: _mapController.camera.center,
-                              address: _addressController.text,
-                            );
+                            final result = {
+                              "mode": widget.existingAddress == null
+                                  ? "add"
+                                  : "edit",
+                              "data": AddressResult(
+                                coordinates: _mapController.camera.center,
+                                address: _addressController.text,
+                              ),
+                              "oldAddress": widget.existingAddress,
+                            };
 
-                            // ส่งกลับ พร้อม mode (add / edit)
-                            Get.back(
-                              result: {
-                                "mode": widget.existingAddress == null
-                                    ? "add"
-                                    : "edit",
-                                "data": result,
-                                "oldAddress": widget.existingAddress,
-                              },
+                            _showResultDialog(
+                              title: widget.existingAddress == null
+                                  ? "เพิ่มที่อยู่สำเร็จ"
+                                  : "แก้ไขที่อยู่สำเร็จ",
+                              imagePath: 'assets/image/Ok Hand.png',
+                              result: result,
                             );
                           }
                         },

@@ -114,6 +114,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       });
     } catch (e) {
+        // ✅ Print log ลง console
+  print("❌ Error in _navigateAndHandleAddress: $e");
       Get.snackbar("ผิดพลาด", e.toString(),
           backgroundColor: Colors.red, colorText: Colors.white);
     }

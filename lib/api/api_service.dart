@@ -122,28 +122,46 @@ class ApiService {
   }
 
   // **** ฟังก์ชันใหม่สำหรับ "เพิ่ม" ที่อยู่ ****
-  Future<List<res.Address>> addAddress({
-    required String token,
-    required AddressPayload payload,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/user/addresses'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(payload.toJson()),
-    );
+Future<List<res.Address>> addAddress({
+  required String token,
+  required AddressPayload payload,
+}) async {
+    print("📤 Sending payload (add): ${jsonEncode(payload.toJson())}");
+  final response = await http.post(
+    Uri.parse('$_baseUrl/api/user/addresses'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode(payload.toJson()),
+    
+  );
 
-    if (response.statusCode == 201) {
-      final responseBody = jsonDecode(response.body);
-      final List<dynamic> addressList = responseBody['addresses'];
-      return addressList.map((json) => res.Address.fromJson(json)).toList();
-    } else {
-      final errorBody = jsonDecode(response.body);
-      throw Exception(errorBody['error'] ?? 'Failed to add address');
+  if (response.statusCode == 201) {
+    final responseBody = jsonDecode(response.body);
+
+    // ✅ Debug: ดูว่า backend ส่งอะไรกลับมา
+    print("📦 addAddress response: $responseBody");
+
+    if (responseBody is Map<String, dynamic>) {
+      // ถ้า backend ส่งกลับมาเป็น object เดียว
+      if (responseBody.containsKey('addresses')) {
+        // กรณี backend ส่ง array addresses
+        final List<dynamic> addressList = responseBody['addresses'];
+        return addressList.map((json) => res.Address.fromJson(json)).toList();
+      } else {
+        // กรณี backend ส่ง address เดียว
+        return [res.Address.fromJson(responseBody)];
+      }
     }
+
+    return [];
+  } else {
+    final errorBody = jsonDecode(response.body);
+    throw Exception(errorBody['error'] ?? 'Failed to add address');
   }
+}
+
 
   // **** ฟังก์ชันใหม่สำหรับ "อัปเดต" ที่อยู่ ****
   Future<List<res.Address>> updateAddress({
@@ -151,6 +169,7 @@ class ApiService {
     required String addressId,
     required AddressPayload payload,
   }) async {
+     print("📤 Sending payload (update): ${jsonEncode(payload.toJson())}");
     final response = await http.put(
       Uri.parse('$_baseUrl/api/user/addresses/$addressId'),
       headers: <String, String>{

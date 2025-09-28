@@ -1,13 +1,9 @@
 // lib/model/request/address_request.dart
-
 class CoordinatesPayload {
   final double latitude;
   final double longitude;
 
-  CoordinatesPayload({
-    required this.latitude,
-    required this.longitude,
-  });
+  CoordinatesPayload({required this.latitude, required this.longitude});
 
   Map<String, dynamic> toJson() => {
         'latitude': latitude,
