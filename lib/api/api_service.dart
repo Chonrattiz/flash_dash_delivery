@@ -74,23 +74,22 @@ class ApiService {
 
   // **** เพิ่มฟังก์ชันใหม่สำหรับอัปเดตโปรไฟล์ ****
   Future<LoginResponse> updateProfile({
-    required String token, // ต้องใช้ Token เพื่อยืนยันตัวตน
+    required String token,
     required UpdateProfilePayload payload,
   }) async {
     final response = await http.put(
       Uri.parse('$_baseUrl/api/user/profile'), // Endpoint จากฝั่ง Go
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token', // <-- ส่ง Token ไปใน Header
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode(payload.toJson()),
     );
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      // Backend ของคุณจะส่งข้อมูลที่อัปเดตแล้วกลับมาใน key "updatedData"
-      // เราจึงนำมาแปลงเป็น LoginResponse เพื่อส่งกลับไปให้หน้า Profile
-      return LoginResponse.fromJson(responseBody['updatedData']);
+      // ✅ ใช้ทั้ง body เลย ไม่ต้องไปหา updatedData
+      return LoginResponse.fromJson(responseBody);
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update profile');
