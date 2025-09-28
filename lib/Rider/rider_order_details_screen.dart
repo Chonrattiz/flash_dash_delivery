@@ -175,25 +175,45 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสร้าง Timeline ของสถานที่
+  // Widget สำหรับสร้าง Timeline ของสถานที่ (เวอร์ชันแก้ไข)
   Widget _buildLocationTimeline() {
-    return const Row(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // The vertical timeline stepper
+        // Stepper UI (Icons and dotted line)
         Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.circle, color: Color(0xFF27B777), size: 12),
-            SizedBox(
-              height: 50,
-              child: VerticalDivider(color: Color(0xFF27B777), thickness: 1.5),
+            const Icon(Icons.location_on, color: Colors.red, size: 20),
+            ...List.generate(
+              5, // จำนวนจุด
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(vertical: 3),
+                width: 3,
+                height: 3,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF27B777),
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
-            Icon(Icons.location_on, color: Colors.red, size: 20),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF27B777), width: 1.5),
+              ),
+              child: const Icon(
+                Icons.circle,
+                color: Color(0xFF27B777),
+                size: 8,
+              ),
+            ),
           ],
         ),
-        SizedBox(width: 16),
-        // The location text
-        Expanded(
+        const SizedBox(width: 16),
+        // Location text
+        const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -206,7 +226,7 @@ class RiderOrderDetailsScreen extends StatelessWidget {
                 'มหาวิทยาลัยมหาสารคาม',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
-              SizedBox(height: 30), // Spacing to align with the next icon
+              SizedBox(height: 24), // Spacing to align with the next icon
               Text(
                 'Delivery Location',
                 style: TextStyle(color: Color(0xFF77869E), fontSize: 12),
@@ -241,7 +261,7 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
-        height: 170.0,
+        height: 186.0,
         color: const Color(0xFFCEF1C3),
         child: SafeArea(
           bottom: false,
