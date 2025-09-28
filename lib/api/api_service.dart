@@ -7,6 +7,8 @@ import '../model/request/login_request.dart';
 import '../model/request/register_request.dart';
 import '../model/response/login_response.dart';
 import '../model/request/update_profile_request.dart';
+import '../model/request/update_profile_rider_request.dart';
+
 class ApiService {
   final String _baseUrl = AppConfig.baseUrl;
 
@@ -92,6 +94,30 @@ class ApiService {
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update profile');
+    }
+  }
+
+  // +++ Add this new function to update a Rider's profile +++
+  Future<LoginResponse> updateRiderProfile({
+    required String token,
+    required UpdateRiderProfilePayload payload,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/rider/profile'), // The new endpoint for riders
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // Send token for authentication
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // The Go backend returns the updated data in the "updatedData" key
+      return LoginResponse.fromJson(responseBody['updatedData']);
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to update rider profile');
     }
   }
 }

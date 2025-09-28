@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/Rider/edit_rider_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 // import 'package:firebase_auth/firebase_auth.dart'; // ไม่จำเป็นต้องใช้แล้ว
@@ -62,10 +63,8 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
   }
 
   void _editProfilePicture() {
-    Get.snackbar(
-      'Edit Profile',
-      'Functionality to edit profile picture coming soon!',
-    );
+    // นำทางไปยังหน้า EditRiderProfileScreen และส่งข้อมูล loginData ไปด้วย
+    Get.to(() => const EditRiderProfileScreen(), arguments: loginData);
   }
 
   @override
