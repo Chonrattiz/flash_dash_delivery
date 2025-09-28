@@ -53,7 +53,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _handleUpdateProfile() async {
     // ป้องกันการกดซ้ำซ้อน
     if (_isLoading) return;
-    
+
     setState(() => _isLoading = true);
 
     try {
@@ -61,23 +61,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // 1A. ตรวจสอบว่ามีการเลือกรูปใหม่หรือไม่ ถ้ามี ให้อัปโหลด
       if (_newProfileImage != null) {
-        updatedImageFilename = await _apiServiceImage.uploadProfileImage(_newProfileImage!);
+        updatedImageFilename = await _apiServiceImage.uploadProfileImage(
+          _newProfileImage!,
+        );
       }
 
       // 1B. สร้าง Payload สำหรับส่งไปอัปเดตข้อมูล
       final payload = UpdateProfilePayload(
         // ส่งค่าไปก็ต่อเมื่อมีการเปลี่ยนแปลงจากเดิม หรือเป็นรหัสผ่านใหม่
-        name: _nameController.text != widget.loginData.userProfile.name ? _nameController.text : null,
-        password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
+        name: _nameController.text != widget.loginData.userProfile.name
+            ? _nameController.text
+            : null,
+        password: _passwordController.text.isNotEmpty
+            ? _passwordController.text
+            : null,
         imageProfile: updatedImageFilename,
       );
-      
+
       // 1C. ตรวจสอบว่ามีข้อมูลให้อัปเดตหรือไม่
-      if (payload.name == null && payload.password == null && payload.imageProfile == null) {
-          Get.back(); // ปิด dialog ยืนยัน
-          Get.snackbar('ไม่มีการเปลี่ยนแปลง', 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ');
-          setState(() => _isLoading = false);
-          return;
+      if (payload.name == null &&
+          payload.password == null &&
+          payload.imageProfile == null) {
+        Get.back(); // ปิด dialog ยืนยัน
+        Get.snackbar('ไม่มีการเปลี่ยนแปลง', 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ');
+        setState(() => _isLoading = false);
+        return;
       }
 
       // 1D. เรียก API เพื่ออัปเดตโปรไฟล์
@@ -87,11 +95,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       Get.back(); // ปิด Dialog ยืนยัน
-      _showSuccessDialog(updatedLoginData); // แสดง Dialog สำเร็จและส่งข้อมูลใหม่ไป
-
+      _showSuccessDialog(
+        updatedLoginData,
+      ); // แสดง Dialog สำเร็จและส่งข้อมูลใหม่ไป
     } catch (e) {
       Get.back(); // ปิด Dialog ยืนยัน
-      Get.snackbar('เกิดข้อผิดพลาด', e.toString().replaceAll('Exception: ', ''));
+      Get.snackbar(
+        'เกิดข้อผิดพลาด',
+        e.toString().replaceAll('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -99,36 +111,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-
   // --- 2. Dialogs และ Image Picker ---
   void _showConfirmationDialog() {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('ยืนยันการแก้ไข', textAlign: TextAlign.center, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
-        content: Text('คุณแน่ใจที่จะแก้ไขข้อมูล?', textAlign: TextAlign.center, style: GoogleFonts.prompt()),
+        title: Text(
+          'ยืนยันการแก้ไข',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.prompt(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'คุณแน่ใจที่จะแก้ไขข้อมูล?',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.prompt(),
+        ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(onPressed: () => Get.back(), child: Text('ยกเลิก', style: GoogleFonts.prompt(color: Colors.grey[700]))),
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'ยกเลิก',
+              style: GoogleFonts.prompt(color: Colors.grey[700]),
+            ),
+          ),
           const SizedBox(width: 12),
           // ใช้ StatefulBuilder เพื่อให้ปุ่มอัปเดตตัวเองเมื่อ isLoading เปลี่ยน
           StatefulBuilder(
             builder: (context, setDialogState) {
               return ElevatedButton(
-                onPressed: _isLoading ? null : () {
-                  // อัปเดต UI ของ dialog ให้แสดง loading
-                  setDialogState(() {}); 
-                  _handleUpdateProfile();
-                },
-                child: _isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) 
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        // อัปเดต UI ของ dialog ให้แสดง loading
+                        setDialogState(() {});
+                        _handleUpdateProfile();
+                      },
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
                     : Text('ยืนยัน', style: GoogleFonts.prompt()),
               );
             },
           ),
         ],
       ),
-       barrierDismissible: !_isLoading, // ป้องกันการกดออกขณะโหลด
+      barrierDismissible: !_isLoading, // ป้องกันการกดออกขณะโหลด
     );
   }
 
@@ -136,27 +170,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        // 1. ย้ายปุ่มปิดมาไว้ใน title และจัดชิดขวา
+        titlePadding: const EdgeInsets.only(top: 16, right: 16),
+        title: Align(
+          alignment: Alignment.topRight,
+          child: InkWell(
+            // ใช้ InkWell หรือ IconButton ก็ได้
+            onTap: () {
+              Get.back(result: updatedData);
+            },
+            child: const Icon(Icons.close, color: Colors.grey),
+          ),
+        ),
+        // 2. กำหนด content เป็น Column ที่มีขนาดเล็กสุดเท่าที่จำเป็น
+        contentPadding: const EdgeInsets.fromLTRB(
+          24,
+          0,
+          24,
+          24,
+        ), // ปรับ padding ด้านบนออก
         content: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:
+              MainAxisSize.min, // <-- จุดสำคัญที่ทำให้ Dialog ไม่ยาวเกินไป
           children: [
+            Image.asset('assets/image/Ok Hand.png', height: 50),
             const SizedBox(height: 20),
-            Image.asset('assets/image/Ok Hand.png', height: 100),
-            const SizedBox(height: 20),
-            Text('แก้ไขสำเร็จ', style: GoogleFonts.prompt(fontSize: 22, fontWeight: FontWeight.w600)),
+            Text(
+              'แก้ไขสำเร็จ',
+              style: GoogleFonts.prompt(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 10),
           ],
         ),
       ),
       barrierDismissible: true,
-    ).then((_) {
-      // เมื่อ dialog ปิด, กลับไปหน้าโปรไฟล์พร้อมส่ง "ข้อมูลที่อัปเดตแล้ว" กลับไป
-      Get.back(result: updatedData);
-    });
+     ).then((_) {
+    Get.back(result: updatedData);
+  });
   }
-  
+
   Future<void> _pickImage() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
       if (pickedFile != null) {
         setState(() {
           _newProfileImage = File(pickedFile.path);
@@ -166,7 +227,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       Get.snackbar('Error', 'Failed to pick image: $e');
     }
   }
-
 
   // --- 3. UI Code ---
   @override
@@ -191,7 +251,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.black54),
             onPressed: () => Get.back(), // ใช้ Get.back() ธรรมดา
           ),
-          title: Text('แก้ไขโปรไฟล์', style: GoogleFonts.prompt(color: Colors.black87, fontWeight: FontWeight.w600)),
+          title: Text(
+            'แก้ไขโปรไฟล์',
+            style: GoogleFonts.prompt(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -212,9 +278,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         backgroundColor: Colors.grey[200],
                         backgroundImage: _newProfileImage != null
                             ? FileImage(_newProfileImage!)
-                            : (fullImageUrl.isNotEmpty ? NetworkImage(fullImageUrl) : null) as ImageProvider?,
+                            : (fullImageUrl.isNotEmpty
+                                      ? NetworkImage(fullImageUrl)
+                                      : null)
+                                  as ImageProvider?,
                         child: fullImageUrl.isEmpty && _newProfileImage == null
-                            ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey,
+                              )
                             : null,
                       ),
                     ),
@@ -226,7 +299,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: const CircleAvatar(
                           radius: 18,
                           backgroundColor: Color(0xFF69F0AE),
-                          child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -261,9 +338,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3498DB),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text('ยืนยัน', style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'ยืนยัน',
+                    style: GoogleFonts.prompt(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -272,7 +357,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-  
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -289,8 +374,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         labelStyle: GoogleFonts.prompt(color: Colors.grey[700]),
         prefixIcon: Icon(icon, color: Colors.grey),
         filled: true,
-        fillColor: enabled ? Colors.white.withOpacity(0.8) : Colors.grey.withOpacity(0.3),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        fillColor: enabled
+            ? Colors.white.withOpacity(0.8)
+            : Colors.grey.withOpacity(0.3),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
@@ -299,4 +389,3 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
-

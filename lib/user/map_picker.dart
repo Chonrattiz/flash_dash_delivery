@@ -130,11 +130,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 backgroundColor: Colors.white.withOpacity(0.8),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Get.off(
-              () => const ProfileScreen(),
-              arguments: widget.loginData, // ใช้ข้อมูลที่หน้านี้ได้รับมาส่งกลับไป
-              transition: Transition.leftToRight, // เพิ่ม animation ให้เหมือนการ back
-            ),
+                  onPressed: () =>Get.back(),
                 ),
               ),
             ),

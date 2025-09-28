@@ -66,19 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (result != null) {
-      // TODO: เรียก API เพื่อเพิ่มหรือแก้ไขที่อยู่ตรงนี้
-      // if (existingAddress == null) {
-      //   // เรียก API เพิ่มที่อยู่ใหม่
-      // } else {
-      //   // เรียก API อัปเดตที่อยู่เดิมโดยใช้ existingAddress.id
-      // }
       Get.snackbar(
         'สำเร็จ',
         'ที่อยู่ใหม่คือ: ${result.address}',
         backgroundColor: Colors.blue,
         colorText: Colors.white,
       );
-      // TODO: หลังจาก API ทำงานสำเร็จ, ให้อัปเดต loginData ด้วยรายการที่อยู่ใหม่ที่ได้จาก Backend
     }
   }
 
@@ -213,12 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                Get.off(
-                  () => EditProfileScreen(loginData: loginData!),
-                  transition: Transition.rightToLeft,
-                );
-              },
+              onPressed: () => _navigateToEditProfile(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4CAF50),
                 foregroundColor: Colors.white,
@@ -260,13 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () async {
-                  final result = await Get.to<AddressResult>(
-                    // ส่ง loginData เข้าไปใน Constructor
-                    () => MapPickerScreen(loginData: loginData!),
-                    transition: Transition.downToUp,
-                  );
-                },
+              onPressed: () => _navigateAndHandleAddress(),
                 child: Text(
                   'เพิ่มที่อยู่',
                   style: GoogleFonts.prompt(
