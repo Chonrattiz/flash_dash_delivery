@@ -96,27 +96,27 @@ class ApiService {
     }
   }
 
-  // +++ Add this new function to update a Rider's profile +++
+  // ในไฟล์ service ของคุณ
   Future<LoginResponse> updateRiderProfile({
     required String token,
     required UpdateRiderProfilePayload payload,
   }) async {
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/rider/profile'), // The new endpoint for riders
+      Uri.parse('$_baseUrl/api/rider/profile'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token', // Send token for authentication
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode(payload.toJson()),
     );
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      // The Go backend returns the updated data in the "updatedData" key
-      return LoginResponse.fromJson(responseBody['updatedData']);
+      // ✅ ใช้ทั้ง body เลย ไม่ต้องไปหา updatedData
+      return LoginResponse.fromJson(responseBody);
     } else {
       final errorBody = jsonDecode(response.body);
-      throw Exception(errorBody['error'] ?? 'Failed to update rider profile');
+      throw Exception(errorBody['error'] ?? 'Failed to update profile');
     }
   }
 }

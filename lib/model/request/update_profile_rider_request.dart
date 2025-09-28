@@ -1,21 +1,3 @@
-// This class is used for updating a standard user's profile.
-class UpdateProfilePayloads {
-  final String? name;
-  final String? password;
-  final String? imageProfile;
-
-  UpdateProfilePayloads({this.name, this.password, this.imageProfile});
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    // Only include non-null values in the JSON
-    if (name != null) data['name'] = name;
-    if (password != null) data['password'] = password;
-    if (imageProfile != null) data['image_profile'] = imageProfile;
-    return data;
-  }
-}
-
 // +++ Add this new class for updating a rider's profile +++
 class UpdateRiderProfilePayload {
   final String? name;

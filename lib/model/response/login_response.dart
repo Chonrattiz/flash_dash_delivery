@@ -108,8 +108,8 @@ class Rider {
   factory Rider.fromJson(Map<String, dynamic> json) {
     return Rider(
       // ต้องเป็น 'ImageVehicle' และ 'VehicleRegistration' (ตัวพิมพ์ใหญ่)
-      imageVehicle: json['ImageVehicle'] ?? '',
-      vehicleRegistration: json['VehicleRegistration'] ?? '',
+      imageVehicle: json['image_vehicle'] ?? '',
+      vehicleRegistration: json['vehicle_registration'] ?? '',
     );
   }
 }
