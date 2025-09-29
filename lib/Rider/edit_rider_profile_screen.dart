@@ -1,17 +1,17 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 
 // Imports for API communication
 import '../api/api_service.dart';
+import '../api/api_service_image.dart'; // ✅ Import the image service
 import '../model/request/update_profile_rider_request.dart';
 import '../model/response/login_response.dart';
 import '../config/image_config.dart';
 
 class EditRiderProfileScreen extends StatefulWidget {
+  // ✅ Reverted to a parameter-less constructor
   const EditRiderProfileScreen({super.key});
 
   @override
@@ -19,8 +19,12 @@ class EditRiderProfileScreen extends StatefulWidget {
 }
 
 class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
-  LoginResponse? loginData;
+  // ✅ Added ApiServiceImage
   final ApiService _apiService = ApiService();
+  final ApiServiceImage _apiServiceImage = ApiServiceImage();
+
+  // ✅ Added nullable loginData to hold data from arguments
+  LoginResponse? loginData;
 
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
@@ -34,71 +38,156 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ Reverted to using Get.arguments to fetch initial data
     final arguments = Get.arguments;
     if (arguments is LoginResponse) {
       loginData = arguments;
-      final user = loginData?.userProfile;
-      final rider = (loginData?.roleSpecificData is Rider)
-          ? (loginData!.roleSpecificData as Rider)
-          : null;
+      final user = loginData!.userProfile;
+      final rider = loginData!.roleSpecificData as Rider?;
 
-      _nameController = TextEditingController(text: user?.name ?? '');
-      _phoneController = TextEditingController(text: user?.phone ?? '');
+      _nameController = TextEditingController(text: user.name);
+      _phoneController = TextEditingController(text: user.phone);
       _vehicleRegController = TextEditingController(
         text: rider?.vehicleRegistration ?? '',
       );
     } else {
+      // Fallback if arguments are not provided correctly
       _nameController = TextEditingController();
       _phoneController = TextEditingController();
       _vehicleRegController = TextEditingController();
-    }
-  }
-
-  Future<void> _pickImage(Function(File) onImagePicked) async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70, // ลดคุณภาพเพื่อลดขนาดไฟล์
-      maxWidth: 1024, // จำกัดขนาดความกว้าง
-    );
-    if (pickedFile != null) {
-      setState(() {
-        onImagePicked(File(pickedFile.path));
+      // Navigate back if data is missing
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Get.back();
+          Get.snackbar('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้');
+        }
       });
     }
   }
 
-  Future<String?> _uploadImage(File? imageFile) async {
-    if (imageFile == null) return null;
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _vehicleRegController.dispose();
+    super.dispose();
+  }
 
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('${ImageConfig.imageUrl}/api/upload'),
+  // ✅ Simplified image picking logic
+  Future<void> _pickImage(bool isProfileImage) async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1024,
     );
-    request.files.add(
-      await http.MultipartFile.fromPath('file', imageFile.path),
-    );
-
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
-      final responseBody = await response.stream.bytesToString();
-      try {
-        final decodedBody = jsonDecode(responseBody);
-        if (decodedBody is Map<String, dynamic> &&
-            decodedBody.containsKey('filename')) {
-          return decodedBody['filename'];
+    if (pickedFile != null) {
+      setState(() {
+        if (isProfileImage) {
+          _profileImageFile = File(pickedFile.path);
         } else {
-          throw Exception('Invalid response format from upload server.');
+          _vehicleImageFile = File(pickedFile.path);
         }
-      } on FormatException {
-        throw Exception('Failed to parse upload server response.');
-      }
-    } else {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception(
-        'Failed to upload image. Status: ${response.statusCode}, Body: $errorBody',
-      );
+      });
     }
+  }
+
+  // The manual _uploadImage function is no longer needed.
+
+  // ✅ Replaced with the robust logic from the user example
+  Future<void> _handleSaveChanges() async {
+    Get.back(); // Close Confirmation Dialog
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      // Step 1: Upload images using ApiServiceImage if new files were picked.
+      final String? newProfileImageFilename = _profileImageFile != null
+          ? await _apiServiceImage.uploadProfileImage(_profileImageFile!)
+          : null;
+      final String? newVehicleImageFilename = _vehicleImageFile != null
+          ? await _apiServiceImage.uploadProfileImage(_vehicleImageFile!)
+          : null;
+
+      // ✅ Changed to use the state variable `loginData`
+      final user = loginData!.userProfile;
+      final rider = loginData!.roleSpecificData as Rider?;
+
+      // Step 2: Create the payload, sending data only if it has changed.
+      final payload = UpdateRiderProfilePayload(
+        name: _nameController.text != user.name ? _nameController.text : null,
+        vehicleRegistration:
+            _vehicleRegController.text != rider?.vehicleRegistration
+            ? _vehicleRegController.text
+            : null,
+        imageProfile: newProfileImageFilename,
+        imageVehicle: newVehicleImageFilename,
+      );
+
+      // Step 3: Check if there's actually anything to update.
+      if (payload.name == null &&
+          payload.vehicleRegistration == null &&
+          payload.imageProfile == null &&
+          payload.imageVehicle == null) {
+        Get.back(); // Close loading
+        Get.snackbar('ไม่มีการเปลี่ยนแปลง', 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ');
+        setState(() => _isLoading = false); // Reset loading state on button
+        return;
+      }
+
+      // Step 4: Call the API service.
+      final updatedLoginData = await _apiService.updateRiderProfile(
+        // ✅ Changed to use the state variable `loginData`
+        token: loginData!.idToken,
+        payload: payload,
+      );
+
+      Get.back(); // Close Loading Indicator
+      await _showSuccessDialog();
+      Get.back(result: updatedLoginData); // Go back with new data
+    } catch (e) {
+      Get.back(); // Close loading
+      Get.snackbar(
+        'เกิดข้อผิดพลาด',
+        e.toString().replaceAll("Exception: ", ""),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Your existing dialogs are great, keeping them.
+  void _showConfirmationDialog() {
+    if (_isLoading) return;
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('ยืนยันการแก้ไข'),
+        content: const Text('คุณต้องการบันทึกการเปลี่ยนแปลงใช่หรือไม่?'),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('ยกเลิก')),
+          TextButton(
+            onPressed:
+                _handleSaveChanges, // This now calls the correct function
+            child: const Text(
+              'ยืนยัน',
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showSuccessDialog() async {
@@ -126,151 +215,19 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
     );
   }
 
-  void _showConfirmationDialog() {
-    if (_isLoading) return;
-
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('ยืนยันการแก้ไข'),
-        content: const Text('คุณต้องการบันทึกการเปลี่ยนแปลงใช่หรือไม่?'),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('ยกเลิก')),
-          TextButton(
-            onPressed: _handleSaveChanges,
-            child: const Text(
-              'ยืนยัน',
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- 🎯 จุดแก้ไข: ปรับปรุงการสร้าง Payload ให้ชัดเจน ---
-  Future<void> _handleSaveChanges() async {
-    Get.back(); // ปิด Confirmation Dialog
-    setState(() => _isLoading = true);
-    Get.dialog(
-      const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
-
-    try {
-      // 1. ตรวจสอบว่ามีข้อมูลส่วนไหนเปลี่ยนแปลงบ้าง
-      final bool nameChanged =
-          _nameController.text != loginData?.userProfile?.name;
-      final bool regChanged =
-          _vehicleRegController.text !=
-          (loginData?.roleSpecificData as Rider?)?.vehicleRegistration;
-      final bool profileImageChanged = _profileImageFile != null;
-      final bool vehicleImageChanged = _vehicleImageFile != null;
-
-      if (!nameChanged &&
-          !regChanged &&
-          !profileImageChanged &&
-          !vehicleImageChanged) {
-        Get.back(); // ปิด loading
-        Get.snackbar('ไม่มีการเปลี่ยนแปลง', 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ');
-        return;
-      }
-
-      // 2. สร้าง Map ว่างๆ เพื่อรวบรวมเฉพาะข้อมูลที่จะส่งไปอัปเดต
-      Map<String, dynamic> updatedFields = {};
-
-      if (nameChanged) {
-        updatedFields['name'] = _nameController.text;
-      }
-      if (regChanged) {
-        updatedFields['vehicle_registration'] = _vehicleRegController.text;
-      }
-      if (profileImageChanged) {
-        final newProfileImage = await _uploadImage(_profileImageFile);
-        if (newProfileImage != null) {
-          updatedFields['image_profile'] = newProfileImage;
-        }
-      }
-      if (vehicleImageChanged) {
-        final newVehicleImage = await _uploadImage(_vehicleImageFile);
-        if (newVehicleImage != null) {
-          updatedFields['image_vehicle'] = newVehicleImage;
-        }
-      }
-
-      // 3. ตรวจสอบอีกครั้งว่ามีข้อมูลให้อัปเดตจริงหรือไม่ (เผื่ออัปโหลดรูปล้มเหลว)
-      if (updatedFields.isEmpty) {
-        Get.back(); // ปิด loading
-        Get.snackbar(
-          'ไม่มีการเปลี่ยนแปลง',
-          'คุณไม่ได้แก้ไขข้อมูลใดๆ หรือการอัปโหลดรูปภาพล้มเหลว',
-        );
-        return;
-      }
-
-      // 4. สร้าง Payload object จาก Map ที่มีเฉพาะข้อมูลที่เปลี่ยนแปลง
-      final payload = UpdateRiderProfilePayload(
-        name: updatedFields['name'],
-        imageProfile: updatedFields['image_profile'],
-        vehicleRegistration: updatedFields['vehicle_registration'],
-        imageVehicle: updatedFields['image_vehicle'],
-      );
-
-      // 5. เรียกใช้ API
-      final updatedLoginData = await _apiService.updateRiderProfile(
-        token: loginData!.idToken,
-        payload: payload,
-      );
-
-      Get.back(); // ปิด Loading Indicator
-      await _showSuccessDialog();
-      Get.back(result: updatedLoginData);
-    } catch (e, stackTrace) {
-      Get.back(); // ปิด loading
-
-      debugPrint("--- ERROR SAVING PROFILE ---");
-      debugPrint(e.toString());
-      debugPrint(stackTrace.toString());
-      debugPrint("--------------------------");
-
-      String errorMessage = e.toString().replaceAll("Exception: ", "");
-      if (e.toString().contains(
-        "'Null' is not a subtype of type 'Map<String, dynamic>'",
-      )) {
-        errorMessage =
-            "ข้อมูลที่ได้รับจากเซิร์ฟเวอร์ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
-      }
-
-      Get.snackbar(
-        'เกิดข้อผิดพลาด',
-        errorMessage,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _vehicleRegController.dispose();
-    super.dispose();
-  }
-
+  // --- 🎯 YOUR UI CODE STARTS HERE ---
+  // The logic above now correctly powers your existing beautiful UI.
   @override
   Widget build(BuildContext context) {
-    final user = loginData?.userProfile;
-    final rider = (loginData?.roleSpecificData is Rider)
-        ? (loginData!.roleSpecificData as Rider)
-        : null;
+    // ✅ Added a null check for loginData
+    if (loginData == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-    final String? profileImageFilename = user?.imageProfile;
+    final user = loginData!.userProfile;
+    final rider = loginData!.roleSpecificData as Rider?;
+
+    final String? profileImageFilename = user.imageProfile;
     final String? vehicleImageFilename = rider?.imageVehicle;
 
     final String fullProfileImageUrl =
@@ -333,7 +290,8 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
                   right: -8,
                   bottom: 4,
                   child: GestureDetector(
-                    onTap: () => _pickImage((file) => _profileImageFile = file),
+                    // ✅ Simplified onTap
+                    onTap: () => _pickImage(true),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
@@ -380,17 +338,7 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
                 ),
                 onPressed: () => Get.back(),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 12.0),
-                child: Text(
-                  'Edit Profile',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
+
               const SizedBox(width: 48),
             ],
           ),
@@ -427,7 +375,8 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
           ),
           const SizedBox(height: 10),
           GestureDetector(
-            onTap: () => _pickImage((file) => _vehicleImageFile = file),
+            // ✅ Simplified onTap
+            onTap: () => _pickImage(false),
             child: Container(
               height: 150,
               width: double.infinity,

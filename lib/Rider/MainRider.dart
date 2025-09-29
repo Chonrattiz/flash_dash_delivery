@@ -30,7 +30,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   // ฟังก์ชันสำหรับนำทางไปหน้า Profile
   void _navigateToProfile() {
     Get.to(
-      () => const RiderProfileScreen(),
+      () => RiderProfileScreen(),
       arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
       transition: Transition.fadeIn,
     );
@@ -39,22 +39,23 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   // ++ 2. สร้างฟังก์ชันสำหรับนำทางไปหน้ารายละเอียดออเดอร์ ++
   void _navigateToOrderDetails() {
     Get.to(
-      () => const RiderOrderDetailsScreen(),
+      () => RiderOrderDetailsScreen(),
       arguments: loginData, // ส่งข้อมูลผู้ใช้ (Rider) ไปด้วย
       transition: Transition.fadeIn,
     );
   }
 
-  // จัดการการกดที่ BottomNavigationBar
   void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
     if (index == 1) {
-      // ถ้ากดที่ปุ่ม Profile ให้เรียกฟังก์ชันนำทาง
+      // ไปหน้าโปรไฟล์
       _navigateToProfile();
-    } else {
-      // ถ้ากดปุ่มอื่น ให้แค่เปลี่ยน state ของ index
-      setState(() {
-        _selectedIndex = index;
-      });
+    } else if (index == 0) {
+      // ไปหน้า Dashboard เองก็ส่ง loginData ด้วย
+      _navigateToOrderDetails();
     }
   }
 

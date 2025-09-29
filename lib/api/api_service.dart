@@ -100,24 +100,30 @@ class ApiService {
     }
   }
 
-  // +++ Add this new function to update a Rider's profile +++
+  // +++ ฟังก์ชันสำหรับอัปเดตโปรไฟล์ Rider +++
   Future<res.LoginResponse> updateRiderProfile({
     required String token,
     required UpdateRiderProfilePayload payload,
   }) async {
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/rider/profile'), // The new endpoint for riders
+      Uri.parse('$_baseUrl/api/rider/profile'), // Endpoint ฝั่ง Go
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token', // Send token for authentication
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode(payload.toJson()),
     );
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      // The Go backend returns the updated data in the "updatedData" key
-      return res.LoginResponse.fromJson(responseBody['updatedData']);
+
+      // ✅ backend ส่งกลับมาเป็น { message, updatedData: { userProfile, roleSpecificData } }
+      // เราแปลง updatedData กลับเป็น LoginResponse ได้เลย
+      if (responseBody['updatedData'] != null) {
+        return res.LoginResponse.fromJson(responseBody['updatedData']);
+      } else {
+        return res.LoginResponse.fromJson(responseBody);
+      }
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update rider profile');
@@ -191,13 +197,15 @@ class ApiService {
     }
   }
 
-   // **** เพิ่มฟังก์ชันใหม่สำหรับ "ค้นหา" ผู้ใช้ ****
+  // **** เพิ่มฟังก์ชันใหม่สำหรับ "ค้นหา" ผู้ใช้ ****
   Future<FindUserResponse> findUserByPhone({
     required String token,
     required String phone,
   }) async {
     // สร้าง URL พร้อม Query Parameter (เช่น .../find?phone=098xxxxxxx)
-    final uri = Uri.parse('$_baseUrl/api/users/find').replace(queryParameters: {'phone': phone});
+    final uri = Uri.parse(
+      '$_baseUrl/api/users/find',
+    ).replace(queryParameters: {'phone': phone});
 
     final response = await http.get(
       uri,
@@ -218,7 +226,6 @@ class ApiService {
     }
   }
 
-
   // **** เพิ่มฟังก์ชันใหม่สำหรับ "สร้าง" การจัดส่ง ****
   Future<String> createDelivery({
     required String token,
@@ -233,7 +240,8 @@ class ApiService {
       body: jsonEncode(payload.toJson()),
     );
 
-    if (response.statusCode == 201) { // 201 Created
+    if (response.statusCode == 201) {
+      // 201 Created
       final responseBody = jsonDecode(response.body);
       return responseBody['message'];
     } else {
@@ -242,9 +250,7 @@ class ApiService {
     }
   }
 
-  Future<DeliveryListResponse> getDeliveries({
-    required String token,
-  }) async {
+  Future<DeliveryListResponse> getDeliveries({required String token}) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/api/user/deliveries'), // Endpoint จากฝั่ง Go
       headers: <String, String>{

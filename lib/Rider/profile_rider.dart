@@ -1,4 +1,6 @@
+import 'package:flash_dash_delivery/Rider/MainRider.dart';
 import 'package:flash_dash_delivery/Rider/edit_rider_profile_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 // import 'package:firebase_auth/firebase_auth.dart'; // ไม่จำเป็นต้องใช้แล้ว
@@ -29,12 +31,20 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 0) {
-      Get.back();
-    }
     setState(() {
       _selectedIndex = index;
     });
+
+    if (index == 0) {
+      // ไปหน้า Job และส่ง loginData ไปด้วย
+      Get.to(
+        () => const RiderDashboardScreen(),
+        arguments: loginData,
+        transition: Transition.fadeIn,
+      );
+    } else if (index == 1) {
+      // อยู่ที่ Profile อยู่แล้ว ไม่ต้องทำอะไร
+    }
   }
 
   // ++ แก้ไขฟังก์ชัน _signOut() ให้เหมือนกับหน้า ProfileScreen ++
@@ -62,9 +72,17 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
     );
   }
 
-  void _editProfilePicture() {
-    // นำทางไปยังหน้า EditRiderProfileScreen และส่งข้อมูล loginData ไปด้วย
-    Get.to(() => const EditRiderProfileScreen(), arguments: loginData);
+  Future<void> _editProfilePicture() async {
+    final updatedData = await Get.to(
+      () => const EditRiderProfileScreen(),
+      arguments: loginData,
+    );
+
+    if (updatedData is LoginResponse) {
+      setState(() {
+        loginData = updatedData; // อัปเดตข้อมูลใหม่ที่แก้ไขแล้ว
+      });
+    }
   }
 
   @override
