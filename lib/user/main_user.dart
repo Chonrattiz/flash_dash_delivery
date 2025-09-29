@@ -76,7 +76,7 @@ class _MainUserPageState extends State<MainUserPage> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        Get.off(
+                        Get.to<LoginResponse>(
                           () => CreateDeliveryScreen(loginData: loginData!),
                           transition: Transition.rightToLeft,
                         );

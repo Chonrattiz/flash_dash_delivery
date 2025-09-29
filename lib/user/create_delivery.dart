@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 
 import '../model/response/login_response.dart';
+import '../model/response/searchphon_response.dart';
 import 'main_user.dart';
+import '../api/api_service.dart';
 
 // สร้าง Model สำหรับเก็บข้อมูลสินค้า
 class DeliveryItemDetails {
@@ -24,16 +27,76 @@ class CreateDeliveryScreen extends StatefulWidget {
 }
 
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
+   // --- 1. เพิ่มตัวแปรที่จำเป็นทั้งหมด ---
+    // Services & Controllers
+  final ApiService _apiService = ApiService();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  
+  // **** 1. แก้ไข State: เพิ่มตัวจัดการที่อยู่สำหรับผู้ส่ง ****
+  final ValueNotifier<int> _selectedSenderAddressIndex = ValueNotifier<int>(0);
+  final ValueNotifier<int> _selectedReceiverAddressIndex = ValueNotifier<int>(0);
   // State สำหรับจัดการข้อมูล
   final ValueNotifier<int> _selectedAddressIndex = ValueNotifier<int>(0);
   final ImagePicker _picker = ImagePicker();
   DeliveryItemDetails? _deliveryItem;
   File? _riderImage;
 
-  @override
+   // **** 1. เพิ่ม State สำหรับการค้นหาโดยเฉพาะ ****
+  bool _isSearching = false;
+  String? _searchError;
+  FindUserResponse? _foundUser;
+
+   @override
   void dispose() {
-    _selectedAddressIndex.dispose();
+    _selectedSenderAddressIndex.dispose();
+    _selectedReceiverAddressIndex.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  // --- 2. เพิ่มฟังก์ชันจัดการการค้นหา ---
+    void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 800), () {
+      if (query.isNotEmpty && query.length >= 10) {
+        _searchForUser(query);
+      } else {
+        setState(() {
+          _foundUser = null;
+          _searchError = null;
+        });
+      }
+    });
+  }
+
+  Future<void> _searchForUser(String phone) async {
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+      _foundUser = null;
+    });
+    try {
+      final result = await _apiService.findUserByPhone(
+        token: widget.loginData.idToken,
+        phone: phone,
+      );
+      setState(() {
+        _foundUser = result;
+        _selectedReceiverAddressIndex.value = 0; // Reset index ผู้รับ
+      });
+    } catch (e) {
+      setState(() {
+        _searchError = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+      }
+    }
   }
 
   // --- 1. ฟังก์ชันจัดการรูปภาพ ---
@@ -48,6 +111,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
     return null;
   }
+
+
 
   void _showImageSourcePicker(Function(File) onImageSelected) {
     Get.dialog(
@@ -437,6 +502,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ดึงที่อยู่ของผู้ส่ง (ตัวเอง) ออกมา
+    final List<Address> senderAddresses = (widget.loginData.roleSpecificData as List).cast<Address>();
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -450,19 +518,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Get.off(
-              () => const MainUserPage(),
-              arguments: widget.loginData,
-              transition: Transition.leftToRight,
-            ),
+            onPressed: () => Get.off(() => const MainUserPage(), arguments: widget.loginData, transition: Transition.leftToRight),
           ),
-          title: Text(
-            'สร้างการจัดส่งใหม่',
-            style: GoogleFonts.prompt(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
+          title: Text('สร้างการจัดส่งใหม่', style: GoogleFonts.prompt(fontWeight: FontWeight.w600, color: Colors.black87)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -472,51 +530,51 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('ผู้รับ'),
+              // --- 3. UI ที่แก้ไขใหม่ ---
+              _buildSectionTitle('ที่อยู่ผู้ส่ง (ต้นทาง)'),
+              const SizedBox(height: 8),
+              _buildAddressSelection(
+                addresses: senderAddresses,
+                notifier: _selectedSenderAddressIndex,
+                emptyListMessage: 'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
+              ),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('ผู้รับ (ปลายทาง)'),
               const SizedBox(height: 8),
               _buildReceiverField(),
+              _buildSearchResult(),
+              
+              // จะแสดงส่วนเลือกที่อยู่ของผู้รับ ก็ต่อเมื่อค้นหาเจอแล้วเท่านั้น
+              if (_foundUser != null) ...[
+                const SizedBox(height: 12),
+                _buildAddressSelection(
+                  addresses: _foundUser!.addresses,
+                  notifier: _selectedReceiverAddressIndex,
+                  emptyListMessage: 'ผู้รับยังไม่มีที่อยู่',
+                ),
+              ],
               const SizedBox(height: 24),
 
-              _buildSectionTitle('ที่อยู่จัดส่ง'),
-              const SizedBox(height: 8),
-              _buildAddressSelection(),
-              const SizedBox(height: 24),
-
+              // ... (UI ส่วนรายการสินค้า และ ถ่ายรูป เหมือนเดิม) ...
               _buildSectionTitle('รายการ'),
               const SizedBox(height: 8),
-              // --- 3. UI ส่วนรายการสินค้า ---
-              if (_deliveryItem != null)
-                _buildItemCard(_deliveryItem!)
-              else
-                _buildAddItemButton(),
+              if (_deliveryItem != null) _buildItemCard(_deliveryItem!) else _buildAddItemButton(),
               const SizedBox(height: 24),
-
               _buildSectionTitle('ถ่ายรูปบอกไรเดอร์'),
               const SizedBox(height: 8),
-              // --- 4. UI ส่วนเลือกรูปให้ไรเดอร์ ---
               _buildRiderPhotoPicker(),
               const SizedBox(height: 32),
-
-              // --- 5. ปุ่มสร้างการจัดส่ง ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _showConfirmationDialog,
+                  onPressed: (){}, //_showConfirmationDialog,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text(
-                    'สร้างการจัดส่ง',
-                    style: GoogleFonts.prompt(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: Text('สร้างการจัดส่ง', style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -525,7 +583,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       ),
     );
   }
-
   // --- Widget ย่อยๆ สำหรับสร้าง UI ---
 
   Widget _buildItemCard(DeliveryItemDetails item) {
@@ -632,42 +689,81 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
-  Widget _buildReceiverField() {
+ Widget _buildReceiverField() {
     return TextField(
+      controller: _searchController,
+      onChanged: _onSearchChanged,
+      keyboardType: TextInputType.phone,
       decoration: InputDecoration(
         hintText: 'ค้นหาด้วยหมายเลขโทรศัพท์',
-        hintStyle: GoogleFonts.prompt(color: Colors.grey[600]),
-        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _isSearching
+            ? const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            : null,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
       ),
     );
   }
 
-  Widget _buildAddressSelection() {
+   Widget _buildSearchResult() {
+    if (_searchError != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Text(_searchError!, style: TextStyle(color: Colors.red.shade700)),
+      );
+    }
+    if (_foundUser != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12.0),
+        child: Text(
+          'ผู้รับ: ${_foundUser!.name}',
+          style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+      );
+    }
+    return const SizedBox.shrink(); // ถ้าไม่มีอะไรให้แสดง ก็ไม่ต้องแสดงอะไรเลย
+  }
+
+
+ Widget _buildAddressSelection({
+    required List<Address> addresses,
+    required ValueNotifier<int> notifier,
+    required String emptyListMessage,
+  }) {
+    if (addresses.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+        child: Center(child: Text(emptyListMessage)),
+      );
+    }
     return ValueListenableBuilder<int>(
-      valueListenable: _selectedAddressIndex,
+      valueListenable: notifier,
       builder: (context, selectedIndex, child) {
         return Column(
-          children: [
-            _buildAddressCard(
-              title: 'Home',
-              address: '123 Elm Street, Anytown',
-              isSelected: selectedIndex == 0,
-              onTap: () => _selectedAddressIndex.value = 0,
-            ),
-            const SizedBox(height: 12),
-            _buildAddressCard(
-              title: 'Home2',
-              address: '120 LA Street, Boytown',
-              isSelected: selectedIndex == 1,
-              onTap: () => _selectedAddressIndex.value = 1,
-            ),
-          ],
+          children: List.generate(addresses.length, (index) {
+            final address = addresses[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _buildAddressCard(
+                title: 'ที่อยู่ ${index + 1}',
+                address: address.detail,
+                isSelected: selectedIndex == index,
+                onTap: () => notifier.value = index,
+              ),
+            );
+          }),
         );
       },
     );

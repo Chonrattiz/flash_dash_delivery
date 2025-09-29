@@ -9,6 +9,7 @@ import '../model/request/login_request.dart';
 import '../model/request/update_profile_request.dart';
 import '../model/request/update_profile_rider_request.dart';
 import '../model/request/address_request.dart';
+import '../model/response/searchphon_response.dart';
 
 class ApiService {
   final String _baseUrl = AppConfig.baseUrl;
@@ -185,6 +186,33 @@ class ApiService {
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to update address');
+    }
+  }
+
+   // **** เพิ่มฟังก์ชันใหม่สำหรับ "ค้นหา" ผู้ใช้ ****
+  Future<FindUserResponse> findUserByPhone({
+    required String token,
+    required String phone,
+  }) async {
+    // สร้าง URL พร้อม Query Parameter (เช่น .../find?phone=098xxxxxxx)
+    final uri = Uri.parse('$_baseUrl/api/users/find').replace(queryParameters: {'phone': phone});
+
+    final response = await http.get(
+      uri,
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // ส่ง Token เพื่อยืนยันตัวตน
+      },
+    );
+
+    if (response.statusCode == 200) {
+      // ถ้าค้นหาเจอ, แปลง JSON ที่ได้กลับมาเป็น FindUserResponse
+      final responseBody = jsonDecode(response.body);
+      return FindUserResponse.fromJson(responseBody);
+    } else {
+      // ถ้าไม่เจอ (404) หรือเกิดข้อผิดพลาดอื่นๆ
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to find user');
     }
   }
 }
