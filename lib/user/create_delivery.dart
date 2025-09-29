@@ -9,6 +9,8 @@ import '../model/response/login_response.dart';
 import '../model/response/searchphon_response.dart';
 import 'main_user.dart';
 import '../api/api_service.dart';
+import '../api/api_service_image.dart';
+import '../model/request/create_delivery_request.dart';
 
 // สร้าง Model สำหรับเก็บข้อมูลสินค้า
 class DeliveryItemDetails {
@@ -27,24 +29,19 @@ class CreateDeliveryScreen extends StatefulWidget {
 }
 
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
-  // --- 1. เพิ่มตัวแปรที่จำเป็นทั้งหมด ---
-  // Services & Controllers
+   // --- 1. Services & Controllers ---
   final ApiService _apiService = ApiService();
+  final ApiServiceImage _apiServiceImage = ApiServiceImage();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  // **** 1. แก้ไข State: เพิ่มตัวจัดการที่อยู่สำหรับผู้ส่ง ****
+ // --- 2. State สำหรับ UI ---
   final ValueNotifier<int> _selectedSenderAddressIndex = ValueNotifier<int>(0);
-  final ValueNotifier<int> _selectedReceiverAddressIndex = ValueNotifier<int>(
-    0,
-  );
-  // State สำหรับจัดการข้อมูล
-  final ValueNotifier<int> _selectedAddressIndex = ValueNotifier<int>(0);
+  final ValueNotifier<int> _selectedReceiverAddressIndex = ValueNotifier<int>(0);
   final ImagePicker _picker = ImagePicker();
   DeliveryItemDetails? _deliveryItem;
   File? _riderImage;
-
-  // **** 1. เพิ่ม State สำหรับการค้นหาโดยเฉพาะ ****
+  bool _isLoading = false; // สำหรับ Loading ใน Dialog ยืนยัน
   bool _isSearching = false;
   String? _searchError;
   FindUserResponse? _foundUser;
@@ -57,8 +54,68 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     _debounce?.cancel();
     super.dispose();
   }
+  //ฟังก์ชันหลักสำหรับจัดการการสร้างการจัดส่ง ---
+  Future<void> _handleCreateDelivery() async {
+    // --- 3A. ตรวจสอบข้อมูลเบื้องต้น ---
+    if (_foundUser == null || _searchController.text.isEmpty) {
+      Get.snackbar('ข้อมูลไม่ครบถ้วน', 'กรุณาค้นหาและเลือกผู้รับก่อน');
+      return;
+    }
+    if (_deliveryItem == null) {
+      Get.snackbar('ข้อมูลไม่ครบถ้วน', 'กรุณาเพิ่มรายการสินค้าก่อน');
+      return;
+    }
 
-  // --- 2. เพิ่มฟังก์ชันจัดการการค้นหา ---
+    setState(() => _isLoading = true);
+
+    try {
+      // --- 3B. อัปโหลดรูปภาพทั้งหมดก่อน ---
+      final List<Future<String?>> uploadTasks = [
+        _apiServiceImage.uploadProfileImage(_deliveryItem!.image),
+        if (_riderImage != null) _apiServiceImage.uploadProfileImage(_riderImage!),
+      ];
+
+      final List<String?> uploadResults = await Future.wait(uploadTasks);
+      final String itemImageFilename = uploadResults[0]!;
+      final String? riderNoteImageFilename = uploadResults.length > 1 ? uploadResults[1] : null;
+
+      // --- 3C. รวบรวมข้อมูลทั้งหมด ---
+      final List<Address> senderAddresses = (widget.loginData.roleSpecificData as List).cast<Address>();
+      final String senderAddressId = senderAddresses[_selectedSenderAddressIndex.value].id;
+      final String receiverAddressId = _foundUser!.addresses[_selectedReceiverAddressIndex.value].id;
+
+      final payload = CreateDeliveryPayload(
+        receiverPhone: _searchController.text,
+        senderAddressId: senderAddressId,
+        receiverAddressId: receiverAddressId,
+        itemDescription: _deliveryItem!.description,
+        itemImageFilename: itemImageFilename,
+        riderNoteImageFilename: riderNoteImageFilename,
+      );
+
+      // --- 3D. เรียก API เพื่อสร้างการจัดส่ง ---
+      final message = await _apiService.createDelivery(
+        token: widget.loginData.idToken,
+        payload: payload,
+      );
+      
+      Get.back(); // ปิด Dialog ยืนยัน
+      Get.snackbar('สำเร็จ', message, backgroundColor: Colors.green, colorText: Colors.white);
+      
+      // กลับไปหน้าหลักหลังจากสร้างสำเร็จ
+      Get.offAll(() => const MainUserPage(), arguments: widget.loginData);
+
+    } catch (e) {
+      Get.back(); // ปิด Dialog ยืนยัน
+      Get.snackbar('เกิดข้อผิดพลาด', e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ฟังก์ชันจัดการการค้นหา ---
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
@@ -101,7 +158,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
   }
 
-  // --- 1. ฟังก์ชันจัดการรูปภาพ ---
+  // ฟังก์ชันจัดการรูปภาพ ---
   Future<File?> _pickImageFromSource(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
@@ -145,7 +202,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
-  // --- 2. ฟังก์ชันจัดการ Dialog ต่างๆ ---
+  // ฟังก์ชันจัดการ Dialog ต่างๆ ---
 
   // Dialog สำหรับ "เพิ่มรายการใหม่"
   Future<void> _showAddItemDialog() async {
@@ -458,53 +515,42 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        // ใช้ title สำหรับรูปภาพ และ content สำหรับข้อความ
-        title: Center(
-          child: Image.asset('assets/image/question_mark.png', height: 60),
-        ),
-        content: Text(
-          'ต้องการจัดส่งสินค้าใช่หรือไม่?',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-        // ย้ายปุ่มมาไว้ใน 'actions'
+        title: Center(child: Image.asset('assets/image/question_mark.png', height: 60)),
+        content: Text('ต้องการจัดส่งสินค้าใช่หรือไม่?', textAlign: TextAlign.center, style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600)),
         actions: [
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Get.back(),
-                  child: Text('ยกเลิก', style: GoogleFonts.prompt()),
-                ),
-              ),
+              Expanded(child: OutlinedButton(onPressed: () => Get.back(), child: Text('ยกเลิก', style: GoogleFonts.prompt()))),
               const SizedBox(width: 16),
               Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back();
-                    Get.snackbar('สำเร็จ', 'สร้างการจัดส่งเรียบร้อยแล้ว');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF69F0AE),
-                  ),
-                  child: Text('ยืนยัน', style: GoogleFonts.prompt()),
+                child: StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return ElevatedButton(
+                      onPressed: _isLoading ? null : () {
+                        setDialogState(() {});
+                        _handleCreateDelivery();
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF69F0AE)),
+                      child: _isLoading 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) 
+                          : Text('ยืนยัน', style: GoogleFonts.prompt()),
+                    );
+                  }
                 ),
               ),
             ],
           ),
         ],
-        // จัดปุ่มให้อยู่ตรงกลางและเพิ่มระยะห่าง
         actionsAlignment: MainAxisAlignment.center,
         actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       ),
+       barrierDismissible: !_isLoading,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ดึงที่อยู่ของผู้ส่ง (ตัวเอง) ออกมา
-    final List<Address> senderAddresses =
-        (widget.loginData.roleSpecificData as List).cast<Address>();
+    final List<Address> senderAddresses = (widget.loginData.roleSpecificData as List).cast<Address>();
 
     return Container(
       decoration: const BoxDecoration(
@@ -519,19 +565,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Get.off(
-              () => const MainUserPage(),
-              arguments: widget.loginData,
-              transition: Transition.leftToRight,
-            ),
+            onPressed: () => Get.off(() => const MainUserPage(), arguments: widget.loginData, transition: Transition.leftToRight),
           ),
-          title: Text(
-            'สร้างการจัดส่งใหม่',
-            style: GoogleFonts.prompt(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
+          title: Text('สร้างการจัดส่งใหม่', style: GoogleFonts.prompt(fontWeight: FontWeight.w600, color: Colors.black87)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -541,23 +577,18 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 3. UI ที่แก้ไขใหม่ ---
               _buildSectionTitle('ที่อยู่ผู้ส่ง (ต้นทาง)'),
               const SizedBox(height: 8),
               _buildAddressSelection(
                 addresses: senderAddresses,
                 notifier: _selectedSenderAddressIndex,
-                emptyListMessage:
-                    'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
+                emptyListMessage: 'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
               ),
               const SizedBox(height: 24),
-
               _buildSectionTitle('ผู้รับ (ปลายทาง)'),
               const SizedBox(height: 8),
               _buildReceiverField(),
               _buildSearchResult(),
-
-              // จะแสดงส่วนเลือกที่อยู่ของผู้รับ ก็ต่อเมื่อค้นหาเจอแล้วเท่านั้น
               if (_foundUser != null) ...[
                 const SizedBox(height: 12),
                 _buildAddressSelection(
@@ -567,14 +598,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-
-              // ... (UI ส่วนรายการสินค้า และ ถ่ายรูป เหมือนเดิม) ...
               _buildSectionTitle('รายการ'),
               const SizedBox(height: 8),
-              if (_deliveryItem != null)
-                _buildItemCard(_deliveryItem!)
-              else
-                _buildAddItemButton(),
+              if (_deliveryItem != null) _buildItemCard(_deliveryItem!) else _buildAddItemButton(),
               const SizedBox(height: 24),
               _buildSectionTitle('ถ่ายรูปบอกไรเดอร์'),
               const SizedBox(height: 8),
@@ -583,22 +609,13 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {}, //_showConfirmationDialog,
+                  onPressed: _showConfirmationDialog,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text(
-                    'สร้างการจัดส่ง',
-                    style: GoogleFonts.prompt(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: Text('สร้างการจัดส่ง', style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],

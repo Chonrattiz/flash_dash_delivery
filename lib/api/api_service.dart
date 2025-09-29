@@ -10,6 +10,8 @@ import '../model/request/update_profile_request.dart';
 import '../model/request/update_profile_rider_request.dart';
 import '../model/request/address_request.dart';
 import '../model/response/searchphon_response.dart';
+import '../model/request/create_delivery_request.dart';
+import '../model/response/delivery_list_response.dart';
 
 class ApiService {
   final String _baseUrl = AppConfig.baseUrl;
@@ -213,6 +215,51 @@ class ApiService {
       // ถ้าไม่เจอ (404) หรือเกิดข้อผิดพลาดอื่นๆ
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to find user');
+    }
+  }
+
+
+  // **** เพิ่มฟังก์ชันใหม่สำหรับ "สร้าง" การจัดส่ง ****
+  Future<String> createDelivery({
+    required String token,
+    required CreateDeliveryPayload payload,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/deliveries'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload.toJson()),
+    );
+
+    if (response.statusCode == 201) { // 201 Created
+      final responseBody = jsonDecode(response.body);
+      return responseBody['message'];
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to create delivery');
+    }
+  }
+
+  Future<DeliveryListResponse> getDeliveries({
+    required String token,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/user/deliveries'), // Endpoint จากฝั่ง Go
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // ส่ง Token เพื่อยืนยันตัวตน
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // แปลง JSON ที่ได้กลับมาเป็น DeliveryListResponse
+      return DeliveryListResponse.fromJson(responseBody);
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to fetch deliveries');
     }
   }
 }
