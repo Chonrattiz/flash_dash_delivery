@@ -27,27 +27,29 @@ class CreateDeliveryScreen extends StatefulWidget {
 }
 
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
-   // --- 1. เพิ่มตัวแปรที่จำเป็นทั้งหมด ---
-    // Services & Controllers
+  // --- 1. เพิ่มตัวแปรที่จำเป็นทั้งหมด ---
+  // Services & Controllers
   final ApiService _apiService = ApiService();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
-  
+
   // **** 1. แก้ไข State: เพิ่มตัวจัดการที่อยู่สำหรับผู้ส่ง ****
   final ValueNotifier<int> _selectedSenderAddressIndex = ValueNotifier<int>(0);
-  final ValueNotifier<int> _selectedReceiverAddressIndex = ValueNotifier<int>(0);
+  final ValueNotifier<int> _selectedReceiverAddressIndex = ValueNotifier<int>(
+    0,
+  );
   // State สำหรับจัดการข้อมูล
   final ValueNotifier<int> _selectedAddressIndex = ValueNotifier<int>(0);
   final ImagePicker _picker = ImagePicker();
   DeliveryItemDetails? _deliveryItem;
   File? _riderImage;
 
-   // **** 1. เพิ่ม State สำหรับการค้นหาโดยเฉพาะ ****
+  // **** 1. เพิ่ม State สำหรับการค้นหาโดยเฉพาะ ****
   bool _isSearching = false;
   String? _searchError;
   FindUserResponse? _foundUser;
 
-   @override
+  @override
   void dispose() {
     _selectedSenderAddressIndex.dispose();
     _selectedReceiverAddressIndex.dispose();
@@ -57,7 +59,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   }
 
   // --- 2. เพิ่มฟังก์ชันจัดการการค้นหา ---
-    void _onSearchChanged(String query) {
+  void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
       if (query.isNotEmpty && query.length >= 10) {
@@ -111,8 +113,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
     return null;
   }
-
-
 
   void _showImageSourcePicker(Function(File) onImageSelected) {
     Get.dialog(
@@ -503,7 +503,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   @override
   Widget build(BuildContext context) {
     // ดึงที่อยู่ของผู้ส่ง (ตัวเอง) ออกมา
-    final List<Address> senderAddresses = (widget.loginData.roleSpecificData as List).cast<Address>();
+    final List<Address> senderAddresses =
+        (widget.loginData.roleSpecificData as List).cast<Address>();
 
     return Container(
       decoration: const BoxDecoration(
@@ -518,9 +519,19 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Get.off(() => const MainUserPage(), arguments: widget.loginData, transition: Transition.leftToRight),
+            onPressed: () => Get.off(
+              () => const MainUserPage(),
+              arguments: widget.loginData,
+              transition: Transition.leftToRight,
+            ),
           ),
-          title: Text('สร้างการจัดส่งใหม่', style: GoogleFonts.prompt(fontWeight: FontWeight.w600, color: Colors.black87)),
+          title: Text(
+            'สร้างการจัดส่งใหม่',
+            style: GoogleFonts.prompt(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -536,7 +547,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               _buildAddressSelection(
                 addresses: senderAddresses,
                 notifier: _selectedSenderAddressIndex,
-                emptyListMessage: 'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
+                emptyListMessage:
+                    'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
               ),
               const SizedBox(height: 24),
 
@@ -544,7 +556,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               const SizedBox(height: 8),
               _buildReceiverField(),
               _buildSearchResult(),
-              
+
               // จะแสดงส่วนเลือกที่อยู่ของผู้รับ ก็ต่อเมื่อค้นหาเจอแล้วเท่านั้น
               if (_foundUser != null) ...[
                 const SizedBox(height: 12),
@@ -559,7 +571,10 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               // ... (UI ส่วนรายการสินค้า และ ถ่ายรูป เหมือนเดิม) ...
               _buildSectionTitle('รายการ'),
               const SizedBox(height: 8),
-              if (_deliveryItem != null) _buildItemCard(_deliveryItem!) else _buildAddItemButton(),
+              if (_deliveryItem != null)
+                _buildItemCard(_deliveryItem!)
+              else
+                _buildAddItemButton(),
               const SizedBox(height: 24),
               _buildSectionTitle('ถ่ายรูปบอกไรเดอร์'),
               const SizedBox(height: 8),
@@ -568,13 +583,22 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (){}, //_showConfirmationDialog,
+                  onPressed: () {}, //_showConfirmationDialog,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF69F0AE),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text('สร้างการจัดส่ง', style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: Text(
+                    'สร้างการจัดส่ง',
+                    style: GoogleFonts.prompt(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -689,7 +713,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
- Widget _buildReceiverField() {
+  Widget _buildReceiverField() {
     return TextField(
       controller: _searchController,
       onChanged: _onSearchChanged,
@@ -701,25 +725,30 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             ? const Padding(
                 padding: EdgeInsets.all(12.0),
                 child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               )
             : null,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
 
-   Widget _buildSearchResult() {
+  Widget _buildSearchResult() {
     if (_searchError != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 8.0),
-        child: Text(_searchError!, style: TextStyle(color: Colors.red.shade700)),
+        child: Text(
+          _searchError!,
+          style: TextStyle(color: Colors.red.shade700),
+        ),
       );
     }
     if (_foundUser != null) {
@@ -734,8 +763,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     return const SizedBox.shrink(); // ถ้าไม่มีอะไรให้แสดง ก็ไม่ต้องแสดงอะไรเลย
   }
 
-
- Widget _buildAddressSelection({
+  Widget _buildAddressSelection({
     required List<Address> addresses,
     required ValueNotifier<int> notifier,
     required String emptyListMessage,
@@ -744,7 +772,10 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         width: double.infinity,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Center(child: Text(emptyListMessage)),
       );
     }
@@ -789,27 +820,39 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // <-- จัดให้อยู่ชิดบน
           children: [
-            Icon(
-              Icons.location_on_outlined,
-              color: isSelected ? const Color(0xFF4CAF50) : Colors.grey,
+            // Icon
+            Padding(
+              padding: const EdgeInsets.only(
+                top: 2.0,
+              ), // <-- ขยับไอคอนลงเล็กน้อย
+              child: Icon(
+                Icons.location_on_outlined,
+                color: isSelected ? const Color(0xFF4CAF50) : Colors.grey,
+              ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.prompt(
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.black87 : Colors.grey[700],
+            // **** ใช้ Expanded ห่อ Column ****
+            // เพื่อบอกให้ Column นี้ใช้พื้นที่ที่เหลือทั้งหมด
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.prompt(
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.black87 : Colors.grey[700],
+                    ),
                   ),
-                ),
-                Text(
-                  address,
-                  style: GoogleFonts.prompt(color: Colors.grey[600]),
-                ),
-              ],
+                  // Text ที่อยู่จะสามารถตัดบรรทัดได้เองโดยอัตโนมัติ
+                  Text(
+                    address,
+                    style: GoogleFonts.prompt(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
