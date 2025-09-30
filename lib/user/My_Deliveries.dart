@@ -7,6 +7,7 @@ import '../api/api_service.dart';
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
 import 'navbottom.dart';
+import 'delivery_tracking.dart';
 
 class DeliveriesScreen extends StatefulWidget {
   const DeliveriesScreen({super.key});
@@ -122,50 +123,65 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> {
   // --- 4. Widget ย่อยๆ ที่มีการแก้ไข ---
   
   // รับ Delivery object เข้ามาทั้งก้อน
-  Widget _buildDeliveryCard(Delivery item) {
+ Widget _buildDeliveryCard(Delivery item) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       shadowColor: Colors.grey.withOpacity(0.2),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Row(
-          children: [
-            Icon(Icons.inventory_2_outlined, color: Colors.grey[400], size: 36),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    // ใช้ helper function ใน model เพื่อแสดง Title
-                    item.getTitle(loginData!.userProfile.phone),
-                    style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: item.getStatusColor(), // ใช้ helper function ใน model
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        item.status,
-                        style: GoogleFonts.prompt(fontSize: 13, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+      child: InkWell( // <-- ห่อด้วย InkWell เพื่อให้กดได้
+        borderRadius: BorderRadius.circular(16), // ทำให้ ripple effect ขอบมน
+        onTap: () {
+          // --- เมื่อกด ให้เปิดหน้า Tracking ---
+          Get.to(
+            () => DeliveryTrackingScreen(
+              delivery: item, // ส่งข้อมูล delivery ของรายการที่กด
+              loginData: loginData!, // ส่งข้อมูลผู้ใช้ไปด้วย
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
-          ],
+            transition: Transition.rightToLeft, // Animation แบบเลื่อนจากขวามาซ้าย
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, color: Colors.grey[400], size: 36),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      // ใช้ helper function ใน model เพื่อแสดง Title
+                      item.getTitle(loginData!.userProfile.phone),
+                      style: GoogleFonts.prompt(
+                          fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: item.getStatusColor(), // ใช้ helper function ใน model
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          item.status,
+                          style: GoogleFonts.prompt(
+                              fontSize: 13, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+            ],
+          ),
         ),
       ),
     );

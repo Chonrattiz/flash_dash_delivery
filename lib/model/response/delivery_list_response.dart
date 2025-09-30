@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_response.dart'; // เพื่อใช้ Coordinates
+import 'login_response.dart'; // เพื่อใช้ Address model
 
 class Delivery {
   final String id;
@@ -10,6 +10,13 @@ class Delivery {
   final String status;
   final String senderName;
   final String receiverName;
+  final Address senderAddress;
+  final Address receiverAddress;
+
+  // **** เพิ่ม field ที่ขาดหายไป ****
+  final String? riderUID; // ใช้ String? เพราะอาจเป็น null ได้
+   final String senderImageProfile;
+  final String receiverImageProfile;
 
   Delivery({
     required this.id,
@@ -20,6 +27,11 @@ class Delivery {
     required this.status,
     required this.senderName,
     required this.receiverName,
+    required this.senderAddress,
+    required this.receiverAddress,
+    this.riderUID, // <-- เพิ่มเข้ามา (ไม่ required)
+     required this.senderImageProfile, 
+    required this.receiverImageProfile, 
   });
 
   factory Delivery.fromJson(Map<String, dynamic> json) {
@@ -32,6 +44,13 @@ class Delivery {
       status: json['status'] ?? 'unknown',
       senderName: json['senderName'] ?? 'Unknown Sender',
       receiverName: json['receiverName'] ?? 'Unknown Receiver',
+      senderAddress: Address.fromJson(json['senderAddress'] ?? {}),
+      receiverAddress: Address.fromJson(json['receiverAddress'] ?? {}),
+      // **** อ่านค่า riderUID จาก JSON ****
+      riderUID: json['riderUID'], // ถ้าไม่มีค่า จะเป็น null โดยอัตโนมัติ
+
+      senderImageProfile: json['senderImageProfile'] ?? '',
+      receiverImageProfile: json['receiverImageProfile'] ?? '',
     );
   }
 
@@ -73,3 +92,4 @@ class DeliveryListResponse {
     );
   }
 }
+

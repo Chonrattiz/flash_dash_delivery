@@ -515,7 +515,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Image.asset('assets/image/question_mark.png', height: 60)),
+        title: Center(child: Image.asset('assets/image/confusrd.png', height: 60)),
         content: Text('ต้องการจัดส่งสินค้าใช่หรือไม่?', textAlign: TextAlign.center, style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600)),
         actions: [
           Row(
