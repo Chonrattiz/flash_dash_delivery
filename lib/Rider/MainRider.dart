@@ -1,9 +1,11 @@
 import 'package:flash_dash_delivery/Rider/profile_rider.dart';
-import 'package:flash_dash_delivery/Rider/rider_order_details_screen.dart'; // 1. เพิ่ม import สำหรับหน้ารายละเอียด
+import 'package:flash_dash_delivery/Rider/rider_order_details_screen.dart';
+import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../model/response/login_response.dart';
 import '../config/image_config.dart';
+import '../model/response/delivery_list_response.dart'; // 1. Import Delivery model
 
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -16,46 +18,76 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   int _selectedIndex = 0;
   LoginResponse? loginData;
 
+  // 2. สร้าง State สำหรับเก็บข้อมูลและสถานะการโหลด
+  final ApiService _apiService = ApiService();
+  List<Delivery> _pendingDeliveries = [];
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
     final arguments = Get.arguments;
     if (arguments is LoginResponse) {
-      setState(() {
-        loginData = arguments;
-      });
+      loginData = arguments;
+      // 3. เรียก API เพื่อดึงข้อมูลเมื่อหน้าจอถูกสร้าง
+      _fetchPendingDeliveries();
     }
   }
 
-  // ฟังก์ชันสำหรับนำทางไปหน้า Profile
+  // 4. สร้างฟังก์ชันสำหรับเรียก API
+  Future<void> _fetchPendingDeliveries() async {
+    if (loginData == null) return;
+    try {
+      final deliveries = await _apiService.getPendingDeliveries(
+        token: loginData!.idToken
+      );
+      setState(() {
+        _pendingDeliveries = deliveries;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      Get.snackbar(
+        'Error',
+        'Failed to load deliveries: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
   void _navigateToProfile() {
     Get.to(
       () => RiderProfileScreen(),
-      arguments: loginData, // ส่งข้อมูลทั้งหมดไปที่หน้า Profile
+      arguments: loginData,
       transition: Transition.fadeIn,
     );
   }
 
-  // ++ 2. สร้างฟังก์ชันสำหรับนำทางไปหน้ารายละเอียดออเดอร์ ++
-  void _navigateToOrderDetails() {
+  // แก้ไขให้นำทางพร้อมกับส่งข้อมูล delivery ทั้งก้อนไป
+  void _navigateToOrderDetails(Delivery delivery) {
     Get.to(
       () => RiderOrderDetailsScreen(),
-      arguments: loginData, // ส่งข้อมูลผู้ใช้ (Rider) ไปด้วย
+      arguments: {
+        'loginData': loginData,
+        'delivery': delivery, // ส่งข้อมูล delivery ที่เลือกไปด้วย
+      },
       transition: Transition.fadeIn,
     );
   }
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
     setState(() {
       _selectedIndex = index;
     });
 
     if (index == 1) {
-      // ไปหน้าโปรไฟล์
       _navigateToProfile();
-    } else if (index == 0) {
-      // ไปหน้า Dashboard เองก็ส่ง loginData ด้วย
-      _navigateToOrderDetails();
+    } else {
+      // กลับมาหน้าหลัก ไม่ต้องทำอะไร
     }
   }
 
@@ -63,7 +95,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   Widget build(BuildContext context) {
     final String username = loginData?.userProfile.name ?? 'Rider';
     final String? imageFilename = loginData?.userProfile.imageProfile;
-
     final String fullImageUrl =
         (imageFilename != null && imageFilename.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/$imageFilename"
@@ -76,7 +107,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
           _buildCustomAppBar(
             username: username,
             imageUrl: fullImageUrl,
-            onProfileTap: _navigateToProfile, // <-- ส่งฟังก์ชันเข้าไป
+            onProfileTap: _navigateToProfile,
           ),
           Transform.translate(
             offset: const Offset(0.0, -24.0),
@@ -104,29 +135,20 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               ),
             ),
           ),
+          // 5. เปลี่ยนส่วนแสดงผล Card ให้เป็นแบบไดนามิก
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-              child: Column(
-                children: [
-                  _buildOrderCard(
-                    pickup: 'มหาวิทยาลัยมหาสารคาม',
-                    pickupDetails: '123 Main st, thailand',
-                    delivery: 'หอพักชาท่าขอนยาง',
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _pendingDeliveries.isEmpty
+                ? Center(child: Text('ไม่มีงานที่รอการจัดส่ง'))
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    itemCount: _pendingDeliveries.length,
+                    itemBuilder: (context, index) {
+                      final delivery = _pendingDeliveries[index];
+                      return _buildOrderCard(delivery: delivery);
+                    },
                   ),
-                  _buildOrderCard(
-                    pickup: 'เสริมไทยคอมเพล็กซ์',
-                    pickupDetails: '456 Market Rd, thailand',
-                    delivery: 'คณะวิทยาการสารสนเทศ',
-                  ),
-                  _buildOrderCard(
-                    pickup: 'ตลาดน้อย',
-                    pickupDetails: '789 River St, thailand',
-                    delivery: 'โรงพยาบาลสุทธาเวช',
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -146,6 +168,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   Widget _buildCustomAppBar({
+    // ... โค้ดส่วนนี้เหมือนเดิม ...
     required String username,
     String? imageUrl,
     required VoidCallback onProfileTap,
@@ -220,11 +243,22 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  Widget _buildOrderCard({
-    required String pickup,
-    required String pickupDetails,
-    required String delivery,
-  }) {
+  // 6. อัปเดต Widget ให้รับ Delivery object และจัดการแสดงผลตามที่ต้องการ
+  Widget _buildOrderCard({required Delivery delivery}) {
+    // --- Logic การตัดคำ ---
+    final senderDetailParts = delivery.senderAddress.detail.split(',');
+    final pickup = senderDetailParts.isNotEmpty
+        ? senderDetailParts.first
+        : 'N/A';
+    final pickupDetails = senderDetailParts.length > 1
+        ? senderDetailParts.sublist(1).join(',').trim()
+        : 'N/A';
+
+    final receiverDetailParts = delivery.receiverAddress.detail.split(',');
+    final deliveryLocation = receiverDetailParts.isNotEmpty
+        ? receiverDetailParts.first
+        : 'N/A';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -267,7 +301,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Delivery: $delivery',
+                        'Delivery: $deliveryLocation',
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
                     ],
@@ -279,8 +313,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             Align(
               alignment: Alignment.center,
               child: ElevatedButton(
-                onPressed:
-                    _navigateToOrderDetails, // <-- 3. แก้ไข onPressed ให้เรียกฟังก์ชัน
+                onPressed: () =>
+                    _navigateToOrderDetails(delivery), // ส่ง delivery ไปด้วย
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0FC964),
                   foregroundColor: Colors.white,

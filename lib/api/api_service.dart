@@ -268,4 +268,32 @@ class ApiService {
       throw Exception(errorBody['error'] ?? 'Failed to fetch deliveries');
     }
   }
+
+  // +++ ฟังก์ชันใหม่สำหรับ Rider ดึงงานที่รออยู่ +++
+  Future<List<Delivery>> getPendingDeliveries({required String token}) async {
+    final response = await http.get(
+      // Endpoint จากฝั่ง Go ที่คุณสร้างไว้
+      Uri.parse('$_baseUrl/api/rider/deliveries/pending'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // ส่ง Token เพื่อยืนยันตัวตน
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+
+      // Backend ส่งกลับมาเป็น { "pendingDeliveries": [...] }
+      // เราจึงต้องดึงข้อมูลจาก key "pendingDeliveries"
+      final List<dynamic> deliveryListJson = responseBody['pendingDeliveries'];
+
+      // แปลง List ของ JSON เป็น List ของ Delivery object
+      return deliveryListJson.map((json) => Delivery.fromJson(json)).toList();
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(
+        errorBody['error'] ?? 'Failed to fetch pending deliveries',
+      );
+    }
+  }
 }

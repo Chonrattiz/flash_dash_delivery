@@ -15,8 +15,9 @@ class Delivery {
 
   // **** เพิ่ม field ที่ขาดหายไป ****
   final String? riderUID; // ใช้ String? เพราะอาจเป็น null ได้
-   final String senderImageProfile;
+  final String senderImageProfile;
   final String receiverImageProfile;
+  final String riderNoteImage; // ++ 1. เพิ่ม field นี้เข้ามา
 
   Delivery({
     required this.id,
@@ -30,8 +31,9 @@ class Delivery {
     required this.senderAddress,
     required this.receiverAddress,
     this.riderUID, // <-- เพิ่มเข้ามา (ไม่ required)
-     required this.senderImageProfile, 
-    required this.receiverImageProfile, 
+    required this.senderImageProfile,
+    required this.receiverImageProfile,
+    required this.riderNoteImage, // ++ 2. เพิ่มใน constructor
   });
 
   factory Delivery.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,8 @@ class Delivery {
 
       senderImageProfile: json['senderImageProfile'] ?? '',
       receiverImageProfile: json['receiverImageProfile'] ?? '',
+      riderNoteImage:
+          json['riderNoteImage'] ?? '', // ++ 3. เพิ่มการอ่านค่าจาก JSON
     );
   }
 
@@ -81,15 +85,21 @@ class DeliveryListResponse {
   final List<Delivery> sentDeliveries;
   final List<Delivery> receivedDeliveries;
 
-  DeliveryListResponse({required this.sentDeliveries, required this.receivedDeliveries});
+  DeliveryListResponse({
+    required this.sentDeliveries,
+    required this.receivedDeliveries,
+  });
 
   factory DeliveryListResponse.fromJson(Map<String, dynamic> json) {
-    var sentList = (json['sentDeliveries'] as List? ?? []).map((i) => Delivery.fromJson(i)).toList();
-    var receivedList = (json['receivedDeliveries'] as List? ?? []).map((i) => Delivery.fromJson(i)).toList();
+    var sentList = (json['sentDeliveries'] as List? ?? [])
+        .map((i) => Delivery.fromJson(i))
+        .toList();
+    var receivedList = (json['receivedDeliveries'] as List? ?? [])
+        .map((i) => Delivery.fromJson(i))
+        .toList();
     return DeliveryListResponse(
       sentDeliveries: sentList,
       receivedDeliveries: receivedList,
     );
   }
 }
-
