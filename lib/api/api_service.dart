@@ -322,4 +322,37 @@ class ApiService {
       throw Exception(errorBody['error'] ?? 'Failed to accept delivery');
     }
   }
+  /// อัปเดตตำแหน่งล่าสุดของไรเดอร์ไปยังเซิร์ฟเวอร์
+Future<void> updateRiderLocation({
+  required String token,
+  required double latitude,
+  required double longitude,
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/rider/location'), // Endpoint ที่เราสร้างใน Go
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'latitude': latitude,
+        'longitude': longitude,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      // ถ้าไม่สำเร็จ ให้โยน Error
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to update location');
+    }
+    // ถ้าสำเร็จ ไม่ต้องทำอะไร
+    print('Location updated successfully');
+  } catch (e) {
+    // พิมพ์ error ออกมาดู แต่ไม่หยุดการทำงานของแอป
+    print('Error updating location: $e');
+  }
 }
+}
+
+

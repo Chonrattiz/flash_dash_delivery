@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:dotted_border/dotted_border.dart';
+
+import '../api/api_service.dart'; // ++ 1. Import ApiService เข้ามา
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
 
@@ -31,47 +33,66 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   File? _pickedUpImageFile;
   final ImagePicker _picker = ImagePicker();
 
-  // ✅ 1. เพิ่มตัวแปรสำหรับควบคุมสถานะของ Panel
   bool _isPanelExpanded = false;
-  // ✅ 2. เพิ่ม Controller สำหรับสั่งงาน DraggableSheet
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
+
+  // ++ 2. เพิ่มตัวแปรสำหรับส่งตำแหน่ง ++
+  final ApiService _apiService = ApiService();
+  DateTime? _lastLocationUpdateTime; // ตัวแปรสำหรับหน่วงเวลาการส่ง
 
   @override
   void initState() {
     super.initState();
-    _initializeLocation();
+    _initializeLocationAndStartSendingUpdates(); // เปลี่ยนชื่อฟังก์ชันให้ชัดเจน
   }
 
-  Future<void> _initializeLocation() async {
+  Future<void> _initializeLocationAndStartSendingUpdates() async {
     bool serviceEnabled;
     PermissionStatus permissionGranted;
 
+    // --- ส่วนตรวจสอบ Permission เหมือนเดิม ---
     serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) {
-        return;
-      }
+      if (!serviceEnabled) return;
     }
-
     permissionGranted = await _location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
-        return;
-      }
+      if (permissionGranted != PermissionStatus.granted) return;
     }
 
+    // --- ส่วนรับและส่งตำแหน่ง (ปรับปรุงใหม่) ---
     _location.onLocationChanged.listen((LocationData currentLocation) {
-      if (mounted) {
-        setState(() {
-          _currentRiderLocation = LatLng(
-            currentLocation.latitude!,
-            currentLocation.longitude!,
-          );
-        });
-        _mapController.move(_currentRiderLocation!, 16.0);
+      if (!mounted) return;
+
+      final newLocation = LatLng(
+        currentLocation.latitude!,
+        currentLocation.longitude!,
+      );
+
+      // 1. อัปเดตตำแหน่งบนแผนที่ของไรเดอร์ทันที
+      setState(() {
+        _currentRiderLocation = newLocation;
+      });
+      _mapController.move(newLocation, 16.0);
+
+      // ++ 3. เพิ่ม Logic การส่งตำแหน่งไปที่ Backend ++
+      // หน่วงเวลาการส่งทุกๆ 15 วินาที เพื่อไม่ให้ยิง API บ่อยเกินไป
+      final now = DateTime.now();
+      if (_lastLocationUpdateTime == null ||
+          now.difference(_lastLocationUpdateTime!).inSeconds > 15) {
+        
+        print("Sending location to backend...");
+        // เรียกใช้ API เพื่อส่งตำแหน่ง
+        _apiService.updateRiderLocation(
+          token: widget.loginData.idToken,
+          latitude: newLocation.latitude,
+          longitude: newLocation.longitude,
+        );
+        // อัปเดตเวลาที่ส่งล่าสุด
+        _lastLocationUpdateTime = now;
       }
     });
   }
@@ -88,21 +109,19 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     }
   }
 
+  // --- โค้ดส่วน UI ที่เหลือเหมือนเดิมทั้งหมด ไม่มีการแก้ไข ---
   @override
   Widget build(BuildContext context) {
     final LatLng senderLocation = LatLng(
       widget.delivery.senderAddress.coordinates.latitude,
       widget.delivery.senderAddress.coordinates.longitude,
     );
-
-    // กำหนดขนาดของ Panel
-    const double minPanelSize = 0.22; // ขนาดตอนหุบ (ปรับให้เล็กลง)
-    const double maxPanelSize = 0.6; // ขนาดตอนขยาย
+    const double minPanelSize = 0.22;
+    const double maxPanelSize = 0.6;
 
     return Scaffold(
       body: Stack(
         children: [
-          // --- 1. แผนที่ ---
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -121,21 +140,11 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                     point: senderLocation,
                     child: Column(
                       children: [
-                        const Icon(
-                          Icons.storefront,
-                          color: Colors.blue,
-                          size: 40,
-                        ),
+                        const Icon(Icons.storefront, color: Colors.blue, size: 40),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 2,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           color: Colors.blue,
-                          child: const Text(
-                            "Pick Up",
-                            style: TextStyle(color: Colors.white, fontSize: 10),
-                          ),
+                          child: const Text("Pick Up", style: TextStyle(color: Colors.white, fontSize: 10)),
                         ),
                       ],
                     ),
@@ -147,24 +156,11 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       point: _currentRiderLocation!,
                       child: Column(
                         children: [
-                          const Icon(
-                            Icons.motorcycle,
-                            color: Colors.green,
-                            size: 40,
-                          ),
+                          const Icon(Icons.motorcycle, color: Colors.green, size: 40),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                             color: Colors.green,
-                            child: const Text(
-                              "Me",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
+                            child: const Text("Me", style: TextStyle(color: Colors.white, fontSize: 10)),
                           ),
                         ],
                       ),
@@ -173,8 +169,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               ),
             ],
           ),
-
-          // --- 2. ปุ่ม Back ---
           Positioned(
             top: 40,
             left: 16,
@@ -188,8 +182,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               ),
             ),
           ),
-
-          // --- 3. แผงข้อมูลที่เลื่อนได้ (ปรับปรุงใหม่) ---
           NotificationListener<DraggableScrollableNotification>(
             onNotification: (notification) {
               final isExpanded = notification.extent > minPanelSize + 0.02;
@@ -203,24 +195,19 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               initialChildSize: minPanelSize,
               minChildSize: minPanelSize,
               maxChildSize: maxPanelSize,
-              builder:
-                  (BuildContext context, ScrollController scrollController) {
-                    return Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(24.0),
-                        ),
-                        boxShadow: [
-                          BoxShadow(blurRadius: 10.0, color: Colors.black26),
-                        ],
-                      ),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: _buildPickupPanelContent(maxPanelSize),
-                      ),
-                    );
-                  },
+              builder: (BuildContext context, ScrollController scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+                    boxShadow: [BoxShadow(blurRadius: 10.0, color: Colors.black26)],
+                  ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: _buildPickupPanelContent(maxPanelSize),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -228,7 +215,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
   }
 
-  // --- Widget สำหรับสร้างเนื้อหาใน Panel ---
   Widget _buildPickupPanelContent(double maxPanelSize) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -246,8 +232,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // --- ส่วนหัวของ Panel ที่กดได้ ---
           GestureDetector(
             onTap: () {
               if (!_isPanelExpanded) {
@@ -258,7 +242,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 );
               }
             },
-            // ทำให้ส่วนนี้ไม่มีสีพื้นหลัง เพื่อให้กดได้ทั้ง Row
             behavior: HitTestBehavior.opaque,
             child: Row(
               children: [
@@ -268,11 +251,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.inventory_2,
-                    color: Colors.grey,
-                    size: 30,
-                  ),
+                  child: const Icon(Icons.inventory_2, color: Colors.grey, size: 30),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -281,10 +260,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                     children: [
                       Text(
                         "Pickup : ${widget.delivery.senderName}",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         widget.delivery.senderAddress.detail,
@@ -298,8 +274,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               ],
             ),
           ),
-
-          // --- ส่วนที่จะแสดงเมื่อ Panel ถูกขยาย ---
           if (_isPanelExpanded)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,24 +304,15 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       child: _pickedUpImageFile != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                _pickedUpImageFile!,
-                                fit: BoxFit.cover,
-                              ),
+                              child: Image.file(_pickedUpImageFile!, fit: BoxFit.cover),
                             )
                           : const Center(
-                              child: Icon(
-                                Icons.camera_alt,
-                                color: Colors.grey,
-                                size: 50,
-                              ),
+                              child: Icon(Icons.camera_alt, color: Colors.grey, size: 50),
                             ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // --- ปุ่มยืนยันรับสินค้า ---
                 ElevatedButton(
                   onPressed: () {
                     // TODO: Logic ยืนยันรับสินค้า
@@ -360,10 +325,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'รับสินค้า',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  child: const Text('รับสินค้า', style: TextStyle(fontSize: 18)),
                 ),
               ],
             ),
