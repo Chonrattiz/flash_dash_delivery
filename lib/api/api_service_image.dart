@@ -2,44 +2,60 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
-import '../config/image_config.dart';
+class ImageUploadService {
+  // --- ตั้งค่าสำหรับ Cloudinary ---
+  // ชื่อนามแฝง Cloudinary ของคุณ
+  final String _cloudName = 'ddcuq2vh9'; 
+  // ชื่อ Upload Preset ที่คุณสร้างไว้ใน Cloudinary
+  final String _preset = 'Flash-Dash-Delivery'; 
 
-class ApiServiceImage {
-  final String _imgagebaseUrl = ImageConfig.imageUrl;
-
-  /// Uploads a profile image and returns only the filename.
-  Future<String> uploadProfileImage(File imageFile) async {
-    final uri = Uri.parse('$_imgagebaseUrl/upload');
+  /// อัปโหลดไฟล์รูปภาพไปยัง Cloudinary และคืนค่าเป็น URL ของรูปภาพ
+  ///
+  /// [imageFile] คือ File object ของรูปภาพที่ต้องการอัปโหลด
+  /// คืนค่า [Future<String>] ซึ่งเป็น secure_url ของรูปภาพที่อัปโหลดสำเร็จ
+  Future<String> uploadImageToCloudinary(File imageFile) async {
+    // 1. สร้าง URL สำหรับ Cloudinary API endpoint
+    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$_cloudName/image/upload');
+    
+    // 2. สร้าง MultipartRequest สำหรับการส่งข้อมูลแบบฟอร์มที่มีไฟล์
     var request = http.MultipartRequest('POST', uri);
 
+    // 3. เพิ่มค่า upload_preset และพารามิเตอร์อื่นๆ ที่จำเป็น
+    request.fields['upload_preset'] = _preset;
+    
+    // 4. เพิ่มไฟล์รูปภาพลงใน request
     request.files.add(
       await http.MultipartFile.fromPath(
-        'file', // Make sure this key matches your backend ('file' or 'image')
+        'file', // Key ที่ Cloudinary ต้องการสำหรับไฟล์
         imageFile.path,
       ),
     );
 
-    var streamedResponse = await request.send();
-    var response = await http.Response.fromStream(streamedResponse);
+    try {
+      // 5. ส่ง request และรอการตอบกลับ
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      if (responseBody['filename'] != null) {
-        // **** จุดแก้ไขหลัก ****
-        // 1. รับ URL เต็มๆ มาจาก server
-        String fullUrl = responseBody['filename'];
+      // 6. ตรวจสอบสถานะการตอบกลับ
+      if (response.statusCode == 200) {
+        final responseBody = json.decode(response.body);
         
-        // 2. ใช้ Uri.parse เพื่อแยกส่วนประกอบของ URL
-        //    แล้วดึงเอา path ส่วนสุดท้าย (ซึ่งก็คือชื่อไฟล์) ออกมา
-        String fileName = Uri.parse(fullUrl).pathSegments.last;
-        
-        // 3. คืนค่ากลับไปเป็นชื่อไฟล์อย่างเดียว
-        return fileName; 
+        // 7. ดึงค่า secure_url ออกมาและคืนค่ากลับไป
+        if (responseBody['secure_url'] != null) {
+          return responseBody['secure_url'];
+        } else {
+          // กรณีที่สำเร็จแต่ไม่พบ URL ในการตอบกลับ
+          throw Exception('Cloudinary API Error: "secure_url" not found in response.');
+        }
       } else {
-        throw Exception('API Error: imageUrl not found in response');
+        // กรณีที่ API ตอบกลับด้วยสถานะอื่นที่ไม่ใช่ 200 (สำเร็จ)
+        print('Error from Cloudinary: ${response.body}');
+        throw Exception('Failed to upload image. Status code: ${response.statusCode}');
       }
-    } else {
-      throw Exception('Failed to upload image. Status code: ${response.statusCode}');
+    } catch (e) {
+      // จัดการกับข้อผิดพลาดที่อาจเกิดขึ้นระหว่างการเชื่อมต่อ
+      print('An error occurred during image upload: $e');
+      throw Exception('An error occurred while uploading the image.');
     }
   }
 }

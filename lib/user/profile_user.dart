@@ -149,10 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final addresses = (loginData?.roleSpecificData is List)
     ? (loginData!.roleSpecificData as List).cast<Address>()
     : <Address>[];
-    final String fullImageUrl =
-        (user?.imageProfile != null && user!.imageProfile.isNotEmpty)
-            ? "${ImageConfig.imageUrl}/upload/${user.imageProfile}"
-            : "";
+    final String fullImageUrl = user?.imageProfile ?? '';
 
     return Container(
       decoration: const BoxDecoration(

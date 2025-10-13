@@ -31,7 +31,7 @@ class CreateDeliveryScreen extends StatefulWidget {
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
    // --- 1. Services & Controllers ---
   final ApiService _apiService = ApiService();
-  final ApiServiceImage _apiServiceImage = ApiServiceImage();
+  final ImageUploadService _imageUploadService = ImageUploadService();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
@@ -69,11 +69,13 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // --- 3B. อัปโหลดรูปภาพทั้งหมดก่อน ---
+       // --- 3B. อัปโหลดรูปภาพทั้งหมดก่อน ---
       final List<Future<String?>> uploadTasks = [
-        _apiServiceImage.uploadProfileImage(_deliveryItem!.image),
-        if (_riderImage != null) _apiServiceImage.uploadProfileImage(_riderImage!),
+         _imageUploadService.uploadImageToCloudinary(_deliveryItem!.image),
+        if (_riderImage != null)  _imageUploadService.uploadImageToCloudinary(_riderImage!),
       ];
+
+
 
       final List<String?> uploadResults = await Future.wait(uploadTasks);
       final String itemImageFilename = uploadResults[0]!;

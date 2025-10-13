@@ -21,7 +21,7 @@ class EditRiderProfileScreen extends StatefulWidget {
 class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
   // ✅ Added ApiServiceImage
   final ApiService _apiService = ApiService();
-  final ApiServiceImage _apiServiceImage = ApiServiceImage();
+  final ImageUploadService _imageUploadService = ImageUploadService();
 
   // ✅ Added nullable loginData to hold data from arguments
   LoginResponse? loginData;
@@ -106,11 +106,11 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
 
     try {
       // Step 1: Upload images using ApiServiceImage if new files were picked.
-      final String? newProfileImageFilename = _profileImageFile != null
-          ? await _apiServiceImage.uploadProfileImage(_profileImageFile!)
+      final String? newProfileImageUrl = _profileImageFile != null
+          ? await _imageUploadService.uploadImageToCloudinary(_profileImageFile!)
           : null;
-      final String? newVehicleImageFilename = _vehicleImageFile != null
-          ? await _apiServiceImage.uploadProfileImage(_vehicleImageFile!)
+      final String? newVehicleImageUrl = _vehicleImageFile != null
+          ? await _imageUploadService.uploadImageToCloudinary(_vehicleImageFile!)
           : null;
 
       // ✅ Changed to use the state variable `loginData`
@@ -124,8 +124,8 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
             _vehicleRegController.text != rider?.vehicleRegistration
             ? _vehicleRegController.text
             : null,
-        imageProfile: newProfileImageFilename,
-        imageVehicle: newVehicleImageFilename,
+        imageProfile: newProfileImageUrl,
+        imageVehicle: newVehicleImageUrl,
       );
 
       // Step 3: Check if there's actually anything to update.
@@ -230,15 +230,8 @@ class _EditRiderProfileScreenState extends State<EditRiderProfileScreen> {
     final String? profileImageFilename = user.imageProfile;
     final String? vehicleImageFilename = rider?.imageVehicle;
 
-    final String fullProfileImageUrl =
-        (profileImageFilename != null && profileImageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$profileImageFilename"
-        : "";
-
-    final String fullVehicleImageUrl =
-        (vehicleImageFilename != null && vehicleImageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$vehicleImageFilename"
-        : "";
+    final String fullProfileImageUrl = user?.imageProfile ?? '';
+    final String fullVehicleImageUrl = rider?.imageVehicle ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDEBED),

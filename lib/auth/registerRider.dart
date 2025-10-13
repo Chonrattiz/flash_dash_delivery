@@ -20,7 +20,7 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
   // ++ สร้าง instance ของ ApiServiceImage
-  final ApiServiceImage _apiServiceImage = ApiServiceImage();
+  final ImageUploadService _imageUploadService = ImageUploadService();
 
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -105,10 +105,8 @@ class _SignUpRiderScreenState extends State<SignUpRiderScreen> {
       // 1. อัปโหลดรูปภาพทั้งสองไฟล์พร้อมกันโดยใช้ Future.wait
       //    เพื่อความรวดเร็วและประสิทธิภาพ
       final List<String> imageUrls = await Future.wait([
-        _apiServiceImage.uploadProfileImage(_profileImage!),
-        _apiServiceImage.uploadProfileImage(
-          _vehicleImage!,
-        ), // <-- สร้างฟังก์ชันนี้ใน ApiServiceImage
+        _imageUploadService.uploadImageToCloudinary(_profileImage!),
+        _imageUploadService.uploadImageToCloudinary(_vehicleImage!),
       ]);
 
       final String profileImageUrl = imageUrls[0];
