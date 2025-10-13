@@ -18,26 +18,61 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
-  // ฟังก์ชันเรียก API เพื่อรับงาน
-  Future<void> _acceptJob(String token, String deliveryId) async {
+  // --- ฟังก์ชันสำหรับแสดง Dialog เมื่อรับงานสำเร็จ และ Navigate ---
+  void _showSuccessAndNavigateDialog(
+    Delivery delivery,
+    LoginResponse loginData,
+  ) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('สำเร็จ!'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 50),
+            SizedBox(height: 16),
+            Text('คุณรับงานสำเร็จแล้ว'),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Get.back(); // ปิด Dialog
+              // ใช้ Get.off เพื่อไปยังหน้าใหม่และลบหน้าปัจจุบันออกจาก Stack
+              // Get.off(
+              //   () => DeliveryTrackingScreen(
+              //     delivery: delivery,
+              //     loginData: loginData,
+              //   ),
+              // );
+            },
+            child: const Text('ตกลง', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+      barrierDismissible: false, // ไม่ให้กดปิดนอก Dialog
+    );
+  }
+
+  // --- แก้ไขฟังก์ชัน _acceptJob ---
+  Future<void> _acceptJob(
+    String token,
+    String deliveryId,
+    Delivery delivery,
+    LoginResponse loginData,
+  ) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // เรียกใช้ API (ส่วนนี้เหมือนเดิม)
       await _apiService.acceptDelivery(token: token, deliveryId: deliveryId);
 
       if (mounted) {
-        // --- 2. ปรับปรุง Snackbar ให้แสดงข้อความตามที่ต้องการ ---
-        Get.snackbar(
-          'สำเร็จ!',
-          'คุณรับงานสำเร็จแล้ว', // เปลี่ยนเป็นข้อความนี้
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        Get.back(result: true);
+        // ✅ เรียกใช้ Dialog ใหม่แทน Snackbar
+        _showSuccessAndNavigateDialog(delivery, loginData);
       }
     } catch (e) {
       if (mounted) {
@@ -58,27 +93,21 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     }
   }
 
-  // --- 1. เพิ่มฟังก์ชันสำหรับแสดง Dialog ยืนยัน ---
+  // ... (ฟังก์ชัน _showConfirmationDialog และ build() อื่นๆ เหมือนเดิม)
+  // แต่ต้องแก้ไขการเรียก _acceptJob ใน _showConfirmationDialog เล็กน้อย
+
   void _showConfirmationDialog(LoginResponse loginData, Delivery delivery) {
     Get.dialog(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('ยืนยันการรับงาน'),
-        content: const Text('คุณต้องการรับงานนี้ใช่หรือไม่?'),
+        // ... (ส่วนอื่นๆ ของ dialog เหมือนเดิม)
         actions: [
-          TextButton(
-            child: const Text('ยกเลิก'),
-            onPressed: () => Get.back(), // กดแล้วปิด Dialog
-          ),
+          TextButton(child: const Text('ยกเลิก'), onPressed: () => Get.back()),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00897B),
-              foregroundColor: Colors.white,
-            ),
             child: const Text('ยืนยัน'),
             onPressed: () {
-              Get.back(); // ปิด Dialog ก่อน
-              _acceptJob(loginData.idToken, delivery.id); // แล้วค่อยเรียก API
+              Get.back();
+              // ✅ ส่ง delivery และ loginData เข้าไปด้วย
+              _acceptJob(loginData.idToken, delivery.id, delivery, loginData);
             },
           ),
         ],
@@ -150,19 +179,11 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     required Delivery delivery,
     required LoginResponse loginData,
   }) {
-    // ... (ส่วนประกาศตัวแปร senderImageUrl, receiverImageUrl ฯลฯ เหมือนเดิม)
-    final String senderImageUrl = (delivery.senderImageProfile.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/${delivery.senderImageProfile}"
-        : "";
-    final String receiverImageUrl = (delivery.receiverImageProfile.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/${delivery.receiverImageProfile}"
-        : "";
-    final String itemImageUrl = (delivery.itemImage.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/${delivery.itemImage}"
-        : "";
-    final String riderNoteImageUrl = (delivery.riderNoteImage.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/${delivery.riderNoteImage}"
-        : "";
+    // ดึง URL เต็มๆ มาจาก Model โดยตรง ไม่ต้องต่อ String แล้ว
+    final String senderImageUrl = delivery.senderImageProfile;
+    final String receiverImageUrl = delivery.receiverImageProfile;
+    final String itemImageUrl = delivery.itemImage;
+    final String riderNoteImageUrl = delivery.riderNoteImage;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
