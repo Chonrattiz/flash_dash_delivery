@@ -44,6 +44,7 @@ dependencies:
   location: ^8.0.1
   material_symbols_icons: ^4.2764.0
   dotted_border: ^2.1.0 
+  cloud_firestore: ^5.1.0
 
 dev_dependencies:
   flutter_test:
