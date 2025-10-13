@@ -132,12 +132,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   // --- Widget สำหรับสร้างเนื้อหาใน Panel ---
   Widget _buildPanelContent() {
     // **** จุดแก้ไข: สร้าง URL รูปภาพ ****
-    final String senderImageUrl = widget.delivery.senderImageProfile.isNotEmpty
-        ? "${ImageConfig.imageUrl}/upload/${widget.delivery.senderImageProfile}"
-        : "";
-    final String receiverImageUrl = widget.delivery.receiverImageProfile.isNotEmpty
-        ? "${ImageConfig.imageUrl}/upload/${widget.delivery.receiverImageProfile}"
-        : "";
+     final String senderImageUrl = widget.delivery.senderImageProfile ?? '';
+    final String receiverImageUrl = widget.delivery.receiverImageProfile ?? '';
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -260,7 +256,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   }
   
   Widget _buildItemDetailsCard() {
-    final imageUrl = "${ImageConfig.imageUrl}/upload/${widget.delivery.itemImage}";
+      final imageUrl = widget.delivery.itemImage ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
