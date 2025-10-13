@@ -12,12 +12,13 @@ class Delivery {
   final String receiverName;
   final Address senderAddress;
   final Address receiverAddress;
-
-  // **** เพิ่ม field ที่ขาดหายไป ****
-  final String? riderUID; // ใช้ String? เพราะอาจเป็น null ได้
+  final String? riderUID;
   final String senderImageProfile;
   final String receiverImageProfile;
-  final String riderNoteImage; // ++ 1. เพิ่ม field นี้เข้ามา
+  final String riderNoteImage;
+
+  // ++ เพิ่ม field สำหรับเก็บข้อมูลโปรไฟล์ไรเดอร์ (เป็น optional) ++
+  final UserProfile? riderProfile;
 
   Delivery({
     required this.id,
@@ -30,10 +31,11 @@ class Delivery {
     required this.receiverName,
     required this.senderAddress,
     required this.receiverAddress,
-    this.riderUID, // <-- เพิ่มเข้ามา (ไม่ required)
+    this.riderUID,
     required this.senderImageProfile,
     required this.receiverImageProfile,
-    required this.riderNoteImage, // ++ 2. เพิ่มใน constructor
+    required this.riderNoteImage,
+    this.riderProfile, // ++ เพิ่มใน constructor ++
   });
 
   factory Delivery.fromJson(Map<String, dynamic> json) {
@@ -48,21 +50,19 @@ class Delivery {
       receiverName: json['receiverName'] ?? 'Unknown Receiver',
       senderAddress: Address.fromJson(json['senderAddress'] ?? {}),
       receiverAddress: Address.fromJson(json['receiverAddress'] ?? {}),
-      // **** อ่านค่า riderUID จาก JSON ****
-      riderUID: json['riderUID'], // ถ้าไม่มีค่า จะเป็น null โดยอัตโนมัติ
-
+      riderUID: json['riderUID'],
       senderImageProfile: json['senderImageProfile'] ?? '',
       receiverImageProfile: json['receiverImageProfile'] ?? '',
-      riderNoteImage:
-          json['riderNoteImage'] ?? '', // ++ 3. เพิ่มการอ่านค่าจาก JSON
+      riderNoteImage: json['riderNoteImage'] ?? '',
+      // riderProfile จะยังเป็น null ในตอนแรก เพราะต้องไป fetch มาทีหลัง
     );
   }
 
   // Helper เพื่อความสะดวกในการแสดงผล
   String getTitle(String currentUserPhone) {
     return senderUID == currentUserPhone
-        ? 'Package to ${receiverName}'
-        : 'Package from ${senderName}';
+        ? 'Package to $receiverName'
+        : 'Package from $senderName';
   }
 
   Color getStatusColor() {

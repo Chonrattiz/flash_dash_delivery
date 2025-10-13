@@ -192,7 +192,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   // --- Widget ย่อยๆ สำหรับสร้าง UI ---
 
   Widget _buildStatusTracker(String currentStatus) {
-    // กำหนดว่าสถานะไหน active แล้วบ้าง
     int activeStep = 0;
     switch (currentStatus) {
       case 'pending':
@@ -209,27 +208,113 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         break;
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildStatusStep('รอรับสินค้า', Symbols.inventory_2, activeStep >= 0),
-        _buildStatusStep('กำลังไปรับ', Symbols.motorcycle, activeStep >= 1),
-        _buildStatusStep('กำลังไปส่ง', Symbols.local_shipping, activeStep >= 2),
-        _buildStatusStep('ส่งสำเร็จ', Symbols.task_alt, activeStep >= 3),
-      ],
+    final activeColor = Colors.green;
+    final inactiveColor = Colors.grey.shade300;
+    final double circleRadius = 23; // <-- กำหนดรัศมีวงกลมเป็นตัวแปร
+    final double lineHeight = 5; // <-- กำหนดความหนาเส้นเป็นตัวแปร
+
+    return SizedBox(
+      height: 70,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // --- ชั้นที่ 1: เส้นเชื่อมพื้นหลัง ---
+          Positioned(
+            top: circleRadius - (lineHeight / 2),
+            left: 30, // ระยะห่างจากขอบซ้าย
+            right: 30, // ระยะห่างจากขอบขวา
+            child: Row(
+              children: [
+                Expanded(
+                  flex: activeStep,
+                  child: Container(height: lineHeight, color: activeColor),
+                ),
+                Expanded(
+                  flex: 3 - activeStep,
+                  child: Container(height: lineHeight, color: inactiveColor),
+                ),
+              ],
+            ),
+          ),
+
+          // --- ชั้นที่ 2: วงกลมและข้อความ (วางทับเส้น) ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatusStep(
+                'รอไรเดอร์รับ',
+                Symbols.hourglass_empty,
+                activeStep >= 0,
+                circleRadius,
+              ),
+              _buildStatusStep(
+                'กำลังไปรับ',
+                Symbols.work,
+                activeStep >= 1,
+                circleRadius,
+              ),
+              _buildStatusStep(
+                'กำลังไปส่ง',
+                Symbols.moped_package,
+                activeStep >= 2,
+                circleRadius,
+              ),
+              _buildStatusStep(
+                'ส่งสำเร็จ',
+                Symbols.inventory,
+                activeStep >= 3,
+                circleRadius,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatusStep(String title, IconData icon, bool isActive) {
-    final color = isActive ? Theme.of(context).primaryColor : Colors.grey;
+  Widget _buildConnector(bool isActive) {
+    return Expanded(
+      child: Padding(
+        // Padding นี้สำหรับปรับ "ความยาว" ของเส้น (ซ้าย-ขวา)
+        padding: const EdgeInsets.symmetric(horizontal: 1.0),
+        // ✅ เพิ่ม Padding อีกชั้นเพื่อปรับ "ตำแหน่ง" (บน-ล่าง)
+        child: Container(
+          height: 5,
+          decoration: BoxDecoration(
+            color: isActive ? Colors.green : Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusStep(
+    String title,
+    IconData icon,
+    bool isActive,
+    double radius,
+  ) {
+    final activeColor = Colors.green;
+    final inactiveColor = Colors.grey.shade300;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
+          radius: radius, // <-- ใช้ค่ารัศมีจากตัวแปร
+          backgroundColor: isActive ? activeColor : inactiveColor,
+          child: Icon(icon, color: Colors.white, size: 30),
         ),
         const SizedBox(height: 8),
-        Text(title, style: GoogleFonts.prompt(color: color, fontSize: 12)),
+        Text(
+          title,
+          style: GoogleFonts.prompt(
+            color: isActive ? Colors.black87 : Colors.grey,
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ],
     );
   }
@@ -329,29 +414,33 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       width: 80.0,
       height: 80.0,
       point: point,
-
-      // ✅✅✅ เพิ่มบรรทัดนี้เข้าไปครับ ✅✅✅
-      // เพื่อบอกให้ใช้ "ปลายแหลมด้านล่าง" เป็นจุดปักหมุด
-      anchor: Anchor.bottom(),
-
-      child: Stack(
-        // ... โค้ดส่วนที่เหลือเหมือนเดิมทั้งหมด ...
-        alignment: Alignment.center,
-        children: [
-          Icon(
-            Icons.location_on,
-            color: color,
-            size: 60,
-            shadows: const [
-              Shadow(
-                blurRadius: 10.0,
-                color: Colors.black26,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          Positioned(top: 7, child: Icon(icon, color: Colors.white, size: 30)),
-        ],
+      alignment: Alignment.topCenter, // ใช้ alignment ปกติ
+      child: Transform.translate(
+        offset: const Offset(
+          0,
+          20,
+        ), // ✅ ปรับค่าตรงนี้เพื่อขยับหมุดลง (20–30 กำลังดี)
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.location_on,
+              color: color,
+              size: 60,
+              shadows: const [
+                Shadow(
+                  blurRadius: 10.0,
+                  color: Colors.black26,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            Positioned(
+              top: 15,
+              child: Icon(icon, color: Colors.white, size: 30),
+            ),
+          ],
+        ),
       ),
     );
   }
