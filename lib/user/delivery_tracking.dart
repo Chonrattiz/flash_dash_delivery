@@ -61,7 +61,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   // ++ ฟังก์ชันสำคัญ: จัดการการดึงข้อมูลและเริ่ม Tracking ++
   void _initializeRiderDataAndTracking() {
     // ตรวจสอบก่อนว่ามีไรเดอร์รับงานแล้วหรือยัง
-    if (widget.delivery.riderUID != null && widget.delivery.riderUID!.isNotEmpty) {
+    if (widget.delivery.riderUID != null &&
+        widget.delivery.riderUID!.isNotEmpty) {
       // ถ้ามี ให้ไปดึงข้อมูลโปรไฟล์ และเริ่มดักฟังตำแหน่ง
       _fetchRiderProfileAndStartListening(widget.delivery.riderUID!);
     } else {
@@ -108,8 +109,10 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
 
   void _startListeningToRiderLocation(String riderPhone) {
     // สมมติว่าใน Firestore มี collection 'riders' และ document ID คือเบอร์โทร
-    final riderDocStream =
-        FirebaseFirestore.instance.collection('riders').doc(riderPhone).snapshots();
+    final riderDocStream = FirebaseFirestore.instance
+        .collection('riders')
+        .doc(riderPhone)
+        .snapshots();
 
     _locationSubscription = riderDocStream.listen((DocumentSnapshot snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
@@ -120,7 +123,10 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           final GeoPoint location = data['currentLocation'];
           if (mounted) {
             setState(() {
-              _riderCurrentLocation = LatLng(location.latitude, location.longitude);
+              _riderCurrentLocation = LatLng(
+                location.latitude,
+                location.longitude,
+              );
             });
           }
         }
@@ -150,12 +156,21 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.flash_dash_delivery',
               ),
               MarkerLayer(
                 markers: [
-                  _buildPinMarker(senderLocation, Symbols.approval_delegation, Colors.blue.shade700),
-                  _buildPinMarker(receiverLocation, Symbols.deployed_code_account, Colors.green.shade600),
-                  
+                  _buildPinMarker(
+                    senderLocation,
+                    Symbols.approval_delegation,
+                    Colors.blue.shade700,
+                  ),
+                  _buildPinMarker(
+                    receiverLocation,
+                    Symbols.deployed_code_account,
+                    Colors.green.shade600,
+                  ),
+
                   // ++ Marker ของไรเดอร์ จะแสดงก็ต่อเมื่อมีตำแหน่งแล้ว ++
                   if (_riderCurrentLocation != null)
                     Marker(
@@ -165,10 +180,18 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Icon(Symbols.navigation, color: Colors.purple.shade700, size: 60),
+                          Icon(
+                            Symbols.navigation,
+                            color: Colors.purple.shade700,
+                            size: 60,
+                          ),
                           Positioned(
                             top: 15,
-                            child: Icon(Symbols.moped, color: Colors.white, size: 30),
+                            child: Icon(
+                              Symbols.moped,
+                              color: Colors.white,
+                              size: 30,
+                            ),
                           ),
                         ],
                       ),
@@ -229,10 +252,12 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         children: [
           Center(
             child: Container(
-              width: 40, height: 5,
+              width: 40,
+              height: 5,
               decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12)),
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -240,7 +265,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
-          
+
           // ++ แก้ไข _buildUserCard ของไรเดอร์ ให้แสดงข้อมูลจาก State ++
           _buildUserCard(
             title: 'ไรเดอร์',
@@ -277,10 +302,18 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   Widget _buildStatusTracker(String currentStatus) {
     int activeStep = 0;
     switch (currentStatus) {
-      case 'pending':   activeStep = 0; break;
-      case 'accepted':  activeStep = 1; break;
-      case 'picked_up': activeStep = 2; break;
-      case 'delivered': activeStep = 3; break;
+      case 'pending':
+        activeStep = 0;
+        break;
+      case 'accepted':
+        activeStep = 1;
+        break;
+      case 'picked_up':
+        activeStep = 2;
+        break;
+      case 'delivered':
+        activeStep = 3;
+        break;
     }
     final activeColor = Colors.green;
     final inactiveColor = Colors.grey.shade300;
@@ -294,21 +327,52 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         children: [
           Positioned(
             top: circleRadius - (lineHeight / 2),
-            left: 30, right: 30,
+            left: 30,
+            right: 30,
             child: Row(
               children: [
-                Expanded(flex: activeStep, child: Container(height: lineHeight, color: activeColor)),
-                Expanded(flex: 3 - activeStep, child: Container(height: lineHeight, color: inactiveColor)),
+                Expanded(
+                  flex: activeStep,
+                  child: Container(height: lineHeight, color: activeColor),
+                ),
+                Expanded(
+                  flex: 3 - activeStep,
+                  child: Container(height: lineHeight, color: inactiveColor),
+                ),
               ],
             ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatusStep('รอไรเดอร์รับ', Symbols.hourglass_empty, activeStep >= 0, circleRadius, 24),
-              _buildStatusStep('กำลังไปรับ', Symbols.work, activeStep >= 1, circleRadius, 24),
-              _buildStatusStep('กำลังไปส่ง', Symbols.moped, activeStep >= 2, circleRadius, 24),
-              _buildStatusStep('ส่งสำเร็จ', Symbols.inventory, activeStep >= 3, circleRadius, 24),
+              _buildStatusStep(
+                'รอไรเดอร์รับ',
+                Symbols.hourglass_empty,
+                activeStep >= 0,
+                circleRadius,
+                24,
+              ),
+              _buildStatusStep(
+                'กำลังไปรับ',
+                Symbols.work,
+                activeStep >= 1,
+                circleRadius,
+                24,
+              ),
+              _buildStatusStep(
+                'กำลังไปส่ง',
+                Symbols.moped,
+                activeStep >= 2,
+                circleRadius,
+                24,
+              ),
+              _buildStatusStep(
+                'ส่งสำเร็จ',
+                Symbols.inventory,
+                activeStep >= 3,
+                circleRadius,
+                24,
+              ),
             ],
           ),
         ],
@@ -316,7 +380,13 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
   }
 
-  Widget _buildStatusStep(String title, IconData icon, bool isActive, double radius, double iconSize) {
+  Widget _buildStatusStep(
+    String title,
+    IconData icon,
+    bool isActive,
+    double radius,
+    double iconSize,
+  ) {
     final activeColor = Colors.green;
     final inactiveColor = Colors.grey.shade300;
     return Column(
@@ -340,24 +410,37 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
   }
 
-  Widget _buildUserCard({required String title, required String name, required String phone, required String imageUrl}) {
+  Widget _buildUserCard({
+    required String title,
+    required String name,
+    required String phone,
+    required String imageUrl,
+  }) {
     return Row(
       children: [
         CircleAvatar(
           radius: 24,
           backgroundColor: Colors.grey.shade200,
           backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-          child: imageUrl.isEmpty ? const Icon(Symbols.person, color: Colors.grey) : null,
+          child: imageUrl.isEmpty
+              ? const Icon(Symbols.person, color: Colors.grey)
+              : null,
         ),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: GoogleFonts.prompt(color: Colors.grey[600])),
-            Text(name, style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              name,
+              style: GoogleFonts.prompt(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             Text(phone, style: GoogleFonts.prompt(color: Colors.grey[700])),
           ],
-        )
+        ),
       ],
     );
   }
@@ -366,21 +449,36 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('รายละเอียดพัสดุ', style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          'รายละเอียดพัสดุ',
+          style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(widget.delivery.itemImage, width: 60, height: 60, fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
-                errorBuilder: (context, error, stackTrace) => const Icon(Symbols.image_not_supported, color: Colors.grey),
+              child: Image.network(
+                widget.delivery.itemImage,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const Center(child: CircularProgressIndicator()),
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Symbols.image_not_supported, color: Colors.grey),
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(widget.delivery.itemDescription, style: GoogleFonts.prompt())),
+            Expanded(
+              child: Text(
+                widget.delivery.itemDescription,
+                style: GoogleFonts.prompt(),
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }

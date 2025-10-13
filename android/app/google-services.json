@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "97570565880",
+    "project_id": "flash-dash-delivery",
+    "storage_bucket": "flash-dash-delivery.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97570565880:android:d107aaf721f3a71d31950d",
+        "android_client_info": {
+          "package_name": "com.example.flash_dash_delivery"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "97570565880-c788jjpm3657ccbaqg3j6vbaloflarbr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlmV81q4Dg-A5Cg0ermbgCUQ2of7_jULo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "97570565880-c788jjpm3657ccbaqg3j6vbaloflarbr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
