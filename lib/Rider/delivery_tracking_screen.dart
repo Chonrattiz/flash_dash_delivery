@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flash_dash_delivery/Rider/MainRider.dart';
 import 'package:flash_dash_delivery/api/api_service_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -53,6 +54,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
 
   // --- ตัวแปรสำหรับจัดการ State ---
   bool _isConfirmingPickup = false;
+  bool _isConfirmingDelivery = false;
   TrackingStatus _currentStatus = TrackingStatus.pickingUp;
 
   @override
@@ -78,15 +80,11 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
 
     _location.onLocationChanged.listen((LocationData currentLocation) {
       if (!mounted) return;
-
       final newLocation = LatLng(
         currentLocation.latitude!,
         currentLocation.longitude!,
       );
-
-      setState(() {
-        _currentRiderLocation = newLocation;
-      });
+      setState(() => _currentRiderLocation = newLocation);
 
       final now = DateTime.now();
       if (_lastLocationUpdateTime == null ||
@@ -102,7 +100,48 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     });
   }
 
-  // ++ 1. สร้างฟังก์ชันกลางสำหรับแสดงตัวเลือกรูปภาพ ++
+  // ++ 1. สร้างฟังก์ชันกลางสำหรับแสดง Dialog ยืนยัน ++
+  void _showConfirmationDialog({
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    // เปลี่ยนจาก Get.dialog เป็น showDialog
+    showDialog(
+      context: context, // ใช้ context ที่รับมา
+      barrierDismissible: false, // ป้องกันการกดปิดนอก Dialog
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              child: const Text('ยกเลิก'),
+              // เปลี่ยนจาก Get.back() เป็น Navigator.of(context).pop()
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: title == 'ยืนยันการรับสินค้า'
+                    ? const Color(0xFF00897B)
+                    : Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('ยืนยัน'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // ปิด Dialog ก่อน
+                onConfirm(); // แล้วค่อยเรียกฟังก์ชัน
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<ImageSource?> _showImageSourceDialog() async {
     return Get.dialog<ImageSource>(
       AlertDialog(
@@ -122,39 +161,28 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
   }
 
-  // --- ส่วนจัดการรูปภาพ (Image Logic) ---
-  // ++ 2. แก้ไขฟังก์ชันเลือกรูปภาพ ให้เรียกใช้ Dialog ++
   Future<void> _pickImageForPickup() async {
     final ImageSource? source = await _showImageSourceDialog();
-    if (source == null) return; // ผู้ใช้ยกเลิก
-
+    if (source == null) return;
     final XFile? pickedFile = await _picker.pickImage(
       source: source,
       imageQuality: 70,
     );
-    if (pickedFile != null) {
-      setState(() {
-        _pickedUpImageFile = File(pickedFile.path);
-      });
-    }
+    if (pickedFile != null)
+      setState(() => _pickedUpImageFile = File(pickedFile.path));
   }
 
   Future<void> _pickImageForDelivery() async {
     final ImageSource? source = await _showImageSourceDialog();
-    if (source == null) return; // ผู้ใช้ยกเลิก
-
+    if (source == null) return;
     final XFile? pickedFile = await _picker.pickImage(
       source: source,
       imageQuality: 70,
     );
-    if (pickedFile != null) {
-      setState(() {
-        _deliveredImageFile = File(pickedFile.path);
-      });
-    }
+    if (pickedFile != null)
+      setState(() => _deliveredImageFile = File(pickedFile.path));
   }
 
-  // --- ส่วนจัดการ Logic หลัก ---
   double _calculateDistance(LatLng start, LatLng end) {
     return Geolocator.distanceBetween(
       start.latitude,
@@ -183,7 +211,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       );
       return;
     }
-
     final pickupLocation = LatLng(
       widget.delivery.senderAddress.coordinates.latitude,
       widget.delivery.senderAddress.coordinates.longitude,
@@ -191,7 +218,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     final distance = _calculateDistance(_currentRiderLocation!, pickupLocation);
 
     if (distance > 200) {
-      // สามารถปรับระยะทางได้ตามต้องการ
       Get.snackbar(
         'คุณอยู่ไกลเกินไป',
         'กรุณาเข้าใกล้จุดรับสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
@@ -211,7 +237,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         deliveryId: widget.delivery.id,
         pickupImageURL: imageUrl,
       );
-
       if (mounted) {
         Get.dialog(
           AlertDialog(
@@ -246,15 +271,89 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         colorText: Colors.white,
       );
     } finally {
-      if (mounted) {
-        setState(() => _isConfirmingPickup = false);
-      }
+      if (mounted) setState(() => _isConfirmingPickup = false);
     }
   }
 
   Future<void> _handleConfirmDelivery() async {
-    // TODO: สร้าง Logic สำหรับยืนยันการส่งของที่นี่
-    Get.snackbar('อยู่ในระหว่างการพัฒนา', 'ฟังก์ชันยืนยันการส่งสินค้า');
+    if (_currentRiderLocation == null) {
+      Get.snackbar(
+        'ข้อผิดพลาด',
+        'ไม่สามารถระบุตำแหน่งของคุณได้',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    if (_deliveredImageFile == null) {
+      Get.snackbar(
+        'โปรดทราบ',
+        'กรุณาถ่ายรูปเพื่อยืนยันการส่งสินค้า',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final receiverLocation = LatLng(
+      widget.delivery.receiverAddress.coordinates.latitude,
+      widget.delivery.receiverAddress.coordinates.longitude,
+    );
+    final distance = _calculateDistance(
+      _currentRiderLocation!,
+      receiverLocation,
+    );
+
+    if (distance > 200) {
+      Get.snackbar(
+        'คุณอยู่ไกลเกินไป',
+        'กรุณาเข้าใกล้จุดส่งสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    setState(() => _isConfirmingDelivery = true);
+    try {
+      final imageUrl = await _imageUploadService.uploadImageToCloudinary(
+        _deliveredImageFile!,
+      );
+      await _apiService.confirmDelivery(
+        token: widget.loginData.idToken,
+        deliveryId: widget.delivery.id,
+        deliveredImageURL: imageUrl,
+      );
+      if (mounted) {
+        Get.dialog(
+          AlertDialog(
+            title: const Text('ส่งสำเร็จ!'),
+            content: const Text('คุณได้จัดส่งสินค้าเรียบร้อยแล้ว'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Get.offAll(
+                    () => const RiderDashboardScreen(),
+                    arguments: widget.loginData,
+                  );
+                },
+                child: const Text('กลับสู่หน้าหลัก'),
+              ),
+            ],
+          ),
+          barrierDismissible: false,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'เกิดข้อผิดพลาด',
+        e.toString().replaceFirst("Exception: ", ""),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      if (mounted) setState(() => _isConfirmingDelivery = false);
+    }
   }
 
   @override
@@ -267,7 +366,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       widget.delivery.receiverAddress.coordinates.latitude,
       widget.delivery.receiverAddress.coordinates.longitude,
     );
-
     const double minPanelSize = 0.22;
     const double maxPanelSize = 0.6;
 
@@ -393,9 +491,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           NotificationListener<DraggableScrollableNotification>(
             onNotification: (notification) {
               final isExpanded = notification.extent > minPanelSize + 0.02;
-              if (isExpanded != _isPanelExpanded) {
+              if (isExpanded != _isPanelExpanded)
                 setState(() => _isPanelExpanded = isExpanded);
-              }
               return true;
             },
             child: DraggableScrollableSheet(
@@ -449,13 +546,12 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () {
-              if (!_isPanelExpanded) {
+              if (!_isPanelExpanded)
                 _sheetController.animateTo(
                   maxPanelSize,
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
                 );
-              }
             },
             behavior: HitTestBehavior.opaque,
             child: Row(
@@ -543,7 +639,18 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: _isConfirmingPickup ? null : _handleConfirmPickup,
+                  // ++ 2. แก้ไขปุ่มให้เรียกใช้ Dialog ยืนยัน ++
+                  onPressed: _isConfirmingPickup
+                      ? null
+                      : () {
+                          _showConfirmationDialog(
+                            // context: context, // ไม่ต้องส่ง context แล้ว เพราะฟังก์ชัน build มี context อยู่แล้ว
+                            title: 'ยืนยันการรับสินค้า',
+                            content:
+                                'คุณแน่ใจหรือไม่ว่าต้องการยืนยันการรับสินค้า?',
+                            onConfirm: _handleConfirmPickup,
+                          );
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00897B),
                     foregroundColor: Colors.white,
@@ -585,13 +692,12 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () {
-              if (!_isPanelExpanded) {
+              if (!_isPanelExpanded)
                 _sheetController.animateTo(
                   maxPanelSize,
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
                 );
-              }
             },
             behavior: HitTestBehavior.opaque,
             child: Row(
@@ -679,7 +785,18 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: _handleConfirmDelivery,
+                  // ++ 3. แก้ไขปุ่มให้เรียกใช้ Dialog ยืนยัน ++
+                  onPressed: _isConfirmingDelivery
+                      ? null
+                      : () {
+                          _showConfirmationDialog(
+                            // context: context, // ไม่ต้องส่ง context แล้ว
+                            title: 'ยืนยันการส่งสินค้า',
+                            content:
+                                'คุณแน่ใจหรือไม่ว่าได้ส่งสินค้าถึงมือผู้รับเรียบร้อยแล้ว?',
+                            onConfirm: _handleConfirmDelivery,
+                          );
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
@@ -688,10 +805,15 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'ยืนยันการส่งสินค้า',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  child: _isConfirmingDelivery
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        )
+                      : const Text(
+                          'ยืนยันการส่งสินค้า',
+                          style: TextStyle(fontSize: 18),
+                        ),
                 ),
               ],
             ),

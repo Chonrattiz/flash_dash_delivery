@@ -375,4 +375,28 @@ class ApiService {
       throw Exception(errorBody['error'] ?? 'Failed to confirm pickup');
     }
   }
+
+  // +++ ฟังก์ชันใหม่สำหรับยืนยันการส่งสินค้า +++
+  Future<String> confirmDelivery({
+    required String token,
+    required String deliveryId,
+    required String deliveredImageURL,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/rider/deliveries/$deliveryId/deliver'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'deliveredImageURL': deliveredImageURL}),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      return responseBody['message'];
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to confirm delivery');
+    }
+  }
 }
