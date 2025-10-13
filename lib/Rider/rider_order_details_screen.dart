@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -5,24 +6,98 @@ import '../config/image_config.dart';
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
 
-class RiderOrderDetailsScreen extends StatelessWidget {
+class RiderOrderDetailsScreen extends StatefulWidget {
   const RiderOrderDetailsScreen({super.key});
 
   @override
+  State<RiderOrderDetailsScreen> createState() =>
+      _RiderOrderDetailsScreenState();
+}
+
+class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+
+  // ฟังก์ชันเรียก API เพื่อรับงาน
+  Future<void> _acceptJob(String token, String deliveryId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // เรียกใช้ API (ส่วนนี้เหมือนเดิม)
+      await _apiService.acceptDelivery(token: token, deliveryId: deliveryId);
+
+      if (mounted) {
+        // --- 2. ปรับปรุง Snackbar ให้แสดงข้อความตามที่ต้องการ ---
+        Get.snackbar(
+          'สำเร็จ!',
+          'คุณรับงานสำเร็จแล้ว', // เปลี่ยนเป็นข้อความนี้
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        Get.back(result: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        Get.snackbar(
+          'เกิดข้อผิดพลาด',
+          e.toString().replaceFirst('Exception: ', ''),
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // --- 1. เพิ่มฟังก์ชันสำหรับแสดง Dialog ยืนยัน ---
+  void _showConfirmationDialog(LoginResponse loginData, Delivery delivery) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('ยืนยันการรับงาน'),
+        content: const Text('คุณต้องการรับงานนี้ใช่หรือไม่?'),
+        actions: [
+          TextButton(
+            child: const Text('ยกเลิก'),
+            onPressed: () => Get.back(), // กดแล้วปิด Dialog
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00897B),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('ยืนยัน'),
+            onPressed: () {
+              Get.back(); // ปิด Dialog ก่อน
+              _acceptJob(loginData.idToken, delivery.id); // แล้วค่อยเรียก API
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // "เปิดกล่อง" (Map) เพื่อหยิบข้อมูลออกมาทีละชิ้น
     final Map<String, dynamic> arguments =
         Get.arguments as Map<String, dynamic>;
     final LoginResponse? loginData = arguments['loginData'];
     final Delivery? deliveryData = arguments['delivery'];
 
-    // ดึงข้อมูล Rider (เหมือนเดิม)
     final String riderUsername = loginData?.userProfile.name ?? 'Rider';
 
-    // ตรวจสอบว่ามีข้อมูล delivery ส่งมาหรือไม่
-    if (deliveryData == null) {
+    if (deliveryData == null || loginData == null) {
       return const Scaffold(
-        body: Center(child: Text('Error: Delivery data not found!')),
+        body: Center(child: Text('Error: Data not found!')),
       );
     }
 
@@ -60,8 +135,10 @@ class RiderOrderDetailsScreen extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-              // ส่งข้อมูล delivery ที่ถูกต้องเข้าไปใน Card
-              child: _buildDetailsCard(delivery: deliveryData),
+              child: _buildDetailsCard(
+                delivery: deliveryData,
+                loginData: loginData,
+              ),
             ),
           ),
         ],
@@ -69,21 +146,20 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสร้าง Card แสดงรายละเอียดทั้งหมด
-  Widget _buildDetailsCard({required Delivery delivery}) {
-    // สร้าง URL รูปภาพเต็มของผู้ส่ง, ผู้รับ, และพัสดุ
+  Widget _buildDetailsCard({
+    required Delivery delivery,
+    required LoginResponse loginData,
+  }) {
+    // ... (ส่วนประกาศตัวแปร senderImageUrl, receiverImageUrl ฯลฯ เหมือนเดิม)
     final String senderImageUrl = (delivery.senderImageProfile.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/${delivery.senderImageProfile}"
         : "";
-
     final String receiverImageUrl = (delivery.receiverImageProfile.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/${delivery.receiverImageProfile}"
         : "";
-
     final String itemImageUrl = (delivery.itemImage.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/${delivery.itemImage}"
         : "";
-
     final String riderNoteImageUrl = (delivery.riderNoteImage.isNotEmpty)
         ? "${ImageConfig.imageUrl}/upload/${delivery.riderNoteImage}"
         : "";
@@ -97,7 +173,8 @@ class RiderOrderDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Customer (Sender) Info Header ---
+            // ... (ส่วนแสดงผลข้อมูลต่างๆ ของ Card เหมือนเดิม)
+            // Sender Info
             Row(
               children: [
                 CircleAvatar(
@@ -132,14 +209,14 @@ class RiderOrderDetailsScreen extends StatelessWidget {
             ),
             const Divider(height: 30),
 
-            // --- Location Details ---
+            // Location Timeline
             _buildLocationTimeline(
               pickupLocation: delivery.senderAddress.detail,
               deliveryLocation: delivery.receiverAddress.detail,
             ),
             const SizedBox(height: 20),
 
-            // ++ ส่วนข้อมูลผู้รับที่เพิ่มกลับเข้ามา ++
+            // Receiver Info
             const Divider(height: 30),
             Row(
               children: [
@@ -158,7 +235,7 @@ class RiderOrderDetailsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      delivery.receiverName, // <-- แสดงชื่อผู้รับ
+                      delivery.receiverName,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -166,7 +243,7 @@ class RiderOrderDetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'โทรศัพท์ ${delivery.receiverUID}', // <-- แสดงเบอร์ผู้รับ
+                      'โทรศัพท์ ${delivery.receiverUID}',
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ],
@@ -174,8 +251,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            // --- Pickup Images ---
             const Text(
               'Pickup image(s)',
               style: TextStyle(
@@ -196,8 +271,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            // --- Product Details ---
             const Text(
               'รายละเอียดสินค้า',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -208,8 +281,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 14, color: Colors.black87),
             ),
             const SizedBox(height: 10),
-
-            // --- View Map Route ---
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
@@ -229,11 +300,14 @@ class RiderOrderDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // --- Accept Job Button ---
+            // --- 3. แก้ไขปุ่ม "รับงาน" ให้เรียกใช้ Dialog ---
             ElevatedButton(
-              onPressed: () {
-                /* TODO: Implement accept job API call */
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () {
+                      // เมื่อกดปุ่ม ให้เรียกฟังก์ชันแสดง Dialog
+                      _showConfirmationDialog(loginData, delivery);
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00897B),
                 foregroundColor: Colors.white,
@@ -242,7 +316,12 @@ class RiderOrderDetailsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text('รับงาน', style: TextStyle(fontSize: 18)),
+              child: _isLoading
+                  ? const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    )
+                  : const Text('รับงาน', style: TextStyle(fontSize: 18)),
             ),
           ],
         ),
@@ -250,7 +329,8 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสร้าง Timeline ของสถานที่
+  // --- Helper Widgets (เหมือนเดิมทั้งหมด) ---
+  // ... ( _buildLocationTimeline, _buildItemImage, _buildPlaceholderImage, _buildCustomAppBar)
   Widget _buildLocationTimeline({
     required String pickupLocation,
     required String deliveryLocation,
@@ -325,7 +405,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับแสดงรูปภาพพัสดุ
   Widget _buildItemImage({required String imageUrl}) {
     if (imageUrl.isEmpty) {
       return _buildPlaceholderImage();
@@ -348,7 +427,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับรูปภาพ Placeholder
   Widget _buildPlaceholderImage() {
     return Container(
       width: 64,
@@ -361,7 +439,6 @@ class RiderOrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  // AppBar ที่ใช้ร่วมกัน
   Widget _buildCustomAppBar({required String username, String? imageUrl}) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),

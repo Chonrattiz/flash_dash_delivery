@@ -296,4 +296,30 @@ class ApiService {
       );
     }
   }
+
+  // +++ ฟังก์ชันใหม่สำหรับ Rider กดรับงาน +++
+  Future<String> acceptDelivery({
+    required String token,
+    required String deliveryId,
+  }) async {
+    final response = await http.post(
+      // Endpoint ที่เราสร้างและทดสอบบน Postman
+      Uri.parse('$_baseUrl/api/rider/deliveries/$deliveryId/accept'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-T',
+        'Authorization': 'Bearer $token', // ส่ง Token เพื่อยืนยันตัวตน
+      },
+      // POST request นี้ไม่ต้องมี body
+    );
+
+    if (response.statusCode == 200) {
+      // 200 OK: รับงานสำเร็จ
+      final responseBody = jsonDecode(response.body);
+      return responseBody['message']; // คืนค่าข้อความ "Delivery accepted successfully"
+    } else {
+      // กรณีเกิด Error (เช่น 409 Conflict เมื่องานถูกรับไปแล้ว)
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to accept delivery');
+    }
+  }
 }
