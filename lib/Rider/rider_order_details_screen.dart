@@ -1,3 +1,4 @@
+import 'package:flash_dash_delivery/Rider/delivery_tracking_screen.dart';
 import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -39,14 +40,13 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // Get.back(); // ปิด Dialog
               // ใช้ Get.off เพื่อไปยังหน้าใหม่และลบหน้าปัจจุบันออกจาก Stack
-              // Get.off(
-              //   () => DeliveryTrackingScreen(
-              //     delivery: delivery,
-              //     loginData: loginData,
-              //   ),
-              // );
+              Get.off(
+                () => DeliveryTrackingScreen(
+                  delivery: delivery,
+                  loginData: loginData,
+                ),
+              );
             },
             child: const Text('ตกลง', style: TextStyle(fontSize: 16)),
           ),
@@ -56,7 +56,7 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     );
   }
 
-  // --- แก้ไขฟังก์ชัน _acceptJob ---
+  // --- ฟังก์ชันเรียก API ---
   Future<void> _acceptJob(
     String token,
     String deliveryId,
@@ -93,20 +93,24 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     }
   }
 
-  // ... (ฟังก์ชัน _showConfirmationDialog และ build() อื่นๆ เหมือนเดิม)
-  // แต่ต้องแก้ไขการเรียก _acceptJob ใน _showConfirmationDialog เล็กน้อย
-
+  // --- ✅ แก้ไข Dialog ยืนยันให้มี Content ---
   void _showConfirmationDialog(LoginResponse loginData, Delivery delivery) {
     Get.dialog(
       AlertDialog(
-        // ... (ส่วนอื่นๆ ของ dialog เหมือนเดิม)
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('ยืนยันการรับงาน'),
+        // ✅ เพิ่มเนื้อหาส่วนนี้เข้าไป
+        content: const Text('คุณต้องการรับงานนี้ใช่หรือไม่?'),
         actions: [
           TextButton(child: const Text('ยกเลิก'), onPressed: () => Get.back()),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00897B),
+              foregroundColor: Colors.white,
+            ),
             child: const Text('ยืนยัน'),
             onPressed: () {
               Get.back();
-              // ✅ ส่ง delivery และ loginData เข้าไปด้วย
               _acceptJob(loginData.idToken, delivery.id, delivery, loginData);
             },
           ),
@@ -117,16 +121,29 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> arguments =
-        Get.arguments as Map<String, dynamic>;
+    final Map<String, dynamic> arguments;
+
+    // ป้องกัน Error กรณี arguments ไม่ใช่ Map
+    try {
+      arguments = Get.arguments as Map<String, dynamic>;
+    } catch (e) {
+      return const Scaffold(
+        body: Center(child: Text('Error: Invalid arguments passed to screen.')),
+      );
+    }
+
+    // ใช้ Key ที่ถูกต้องในการดึงข้อมูล
     final LoginResponse? loginData = arguments['loginData'];
     final Delivery? deliveryData = arguments['delivery'];
 
     final String riderUsername = loginData?.userProfile.name ?? 'Rider';
 
+    // ตรวจสอบว่าข้อมูลที่ได้รับมาเป็น null หรือไม่
     if (deliveryData == null || loginData == null) {
       return const Scaffold(
-        body: Center(child: Text('Error: Data not found!')),
+        body: Center(
+          child: Text('Error: Data not found! Check argument keys.'),
+        ),
       );
     }
 
@@ -194,7 +211,6 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ... (ส่วนแสดงผลข้อมูลต่างๆ ของ Card เหมือนเดิม)
             // Sender Info
             Row(
               children: [
@@ -321,12 +337,11 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
             ),
             const SizedBox(height: 20),
 
-            // --- 3. แก้ไขปุ่ม "รับงาน" ให้เรียกใช้ Dialog ---
+            // --- "รับงาน" Button ---
             ElevatedButton(
               onPressed: _isLoading
                   ? null
                   : () {
-                      // เมื่อกดปุ่ม ให้เรียกฟังก์ชันแสดง Dialog
                       _showConfirmationDialog(loginData, delivery);
                     },
               style: ElevatedButton.styleFrom(
@@ -350,8 +365,7 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     );
   }
 
-  // --- Helper Widgets (เหมือนเดิมทั้งหมด) ---
-  // ... ( _buildLocationTimeline, _buildItemImage, _buildPlaceholderImage, _buildCustomAppBar)
+  // --- Helper Widgets ---
   Widget _buildLocationTimeline({
     required String pickupLocation,
     required String deliveryLocation,

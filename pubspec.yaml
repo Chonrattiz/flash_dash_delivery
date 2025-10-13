@@ -43,6 +43,7 @@ dependencies:
   osm_nominatim: ^4.0.1
   location: ^8.0.1
   material_symbols_icons: ^4.2764.0
+  dotted_border: ^2.1.0 
 
 dev_dependencies:
   flutter_test:
