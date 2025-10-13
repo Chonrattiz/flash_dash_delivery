@@ -322,37 +322,81 @@ class ApiService {
       throw Exception(errorBody['error'] ?? 'Failed to accept delivery');
     }
   }
+
   /// อัปเดตตำแหน่งล่าสุดของไรเดอร์ไปยังเซิร์ฟเวอร์
-Future<void> updateRiderLocation({
-  required String token,
-  required double latitude,
-  required double longitude,
-}) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/rider/location'), // Endpoint ที่เราสร้างใน Go
+  Future<void> updateRiderLocation({
+    required String token,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/rider/location'), // Endpoint ที่เราสร้างใน Go
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
+      );
+
+      if (response.statusCode != 200) {
+        // ถ้าไม่สำเร็จ ให้โยน Error
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Failed to update location');
+      }
+      // ถ้าสำเร็จ ไม่ต้องทำอะไร
+      print('Location updated successfully');
+    } catch (e) {
+      // พิมพ์ error ออกมาดู แต่ไม่หยุดการทำงานของแอป
+      print('Error updating location: $e');
+    }
+  }
+
+  // +++ ฟังก์ชันใหม่สำหรับยืนยันการรับสินค้า +++
+  Future<String> confirmPickup({
+    required String token,
+    required String deliveryId,
+    required String pickupImageURL,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/rider/deliveries/$deliveryId/pickup'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+      body: jsonEncode({'pickupImageURL': pickupImageURL}),
     );
 
-    if (response.statusCode != 200) {
-      // ถ้าไม่สำเร็จ ให้โยน Error
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      return responseBody['message'];
+    } else {
       final errorBody = jsonDecode(response.body);
-      throw Exception(errorBody['error'] ?? 'Failed to update location');
+      throw Exception(errorBody['error'] ?? 'Failed to confirm pickup');
     }
-    // ถ้าสำเร็จ ไม่ต้องทำอะไร
-    print('Location updated successfully');
-  } catch (e) {
-    // พิมพ์ error ออกมาดู แต่ไม่หยุดการทำงานของแอป
-    print('Error updating location: $e');
+  }
+
+  // +++ ฟังก์ชันใหม่สำหรับยืนยันการส่งสินค้า +++
+  Future<String> confirmDelivery({
+    required String token,
+    required String deliveryId,
+    required String deliveredImageURL,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/rider/deliveries/$deliveryId/deliver'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'deliveredImageURL': deliveredImageURL}),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      return responseBody['message'];
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to confirm delivery');
+    }
   }
 }
-}
-
-
