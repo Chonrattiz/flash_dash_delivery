@@ -22,7 +22,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   // Services
   final ApiService _apiService = ApiService();
-  final ApiServiceImage _apiServiceImage = ApiServiceImage();
+  final ImageUploadService _imageUploadService = ImageUploadService();
 
   // Controllers & State
   late TextEditingController _nameController;
@@ -61,7 +61,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // 1A. ตรวจสอบว่ามีการเลือกรูปใหม่หรือไม่ ถ้ามี ให้อัปโหลด
       if (_newProfileImage != null) {
-        updatedImageFilename = await _apiServiceImage.uploadProfileImage(
+        updatedImageFilename = await _imageUploadService.uploadImageToCloudinary(
           _newProfileImage!,
         );
       }
@@ -232,9 +232,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = widget.loginData.userProfile;
-    final String fullImageUrl = (user.imageProfile.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/${user.imageProfile}"
-        : "";
+   final String fullImageUrl = user?.imageProfile ?? '';
 
     return Container(
       decoration: const BoxDecoration(

@@ -95,10 +95,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   Widget build(BuildContext context) {
     final String username = loginData?.userProfile.name ?? 'Rider';
     final String? imageFilename = loginData?.userProfile.imageProfile;
-    final String fullImageUrl =
-        (imageFilename != null && imageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$imageFilename"
-        : "";
+  final String fullImageUrl = loginData?.userProfile.imageProfile ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey[100],

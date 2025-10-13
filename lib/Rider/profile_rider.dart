@@ -95,15 +95,8 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
     final String? profileImageFilename = user?.imageProfile;
     final String? vehicleImageFilename = rider?.imageVehicle;
 
-    final String fullProfileImageUrl =
-        (profileImageFilename != null && profileImageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$profileImageFilename"
-        : "";
-
-    final String fullVehicleImageUrl =
-        (vehicleImageFilename != null && vehicleImageFilename.isNotEmpty)
-        ? "${ImageConfig.imageUrl}/upload/$vehicleImageFilename"
-        : "";
+    final String fullProfileImageUrl = user?.imageProfile ?? '';
+    final String fullVehicleImageUrl = rider?.imageVehicle ?? '';
 
     final String name = user?.name ?? 'N/A';
     final String phone = user?.phone ?? 'N/A';
