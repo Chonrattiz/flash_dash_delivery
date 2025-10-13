@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-
+import 'package:material_symbols_icons/symbols.dart';
 import '../config/image_config.dart';
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
@@ -63,19 +63,17 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               ),
               MarkerLayer(
                 markers: [
-                  // หมุดผู้ส่ง
-                  Marker(
-                    width: 80.0,
-                    height: 80.0,
-                    point: senderLocation,
-                    child: const Icon(Icons.storefront, color: Colors.blue, size: 40),
+                  // หมุดผู้ส่ง (เรียกใช้ฟังก์ชันใหม่)
+                  _buildPinMarker(
+                    senderLocation,
+                    Symbols.approval_delegation,
+                    Colors.blue.shade700,
                   ),
-                  // หมุดผู้รับ
-                  Marker(
-                    width: 80.0,
-                    height: 80.0,
-                    point: receiverLocation,
-                    child: const Icon(Icons.person_pin_circle, color: Colors.green, size: 40),
+                  // หมุดผู้รับ (เรียกใช้ฟังก์ชันใหม่)
+                  _buildPinMarker(
+                    receiverLocation,
+                    Symbols.deployed_code_account,
+                    Colors.green.shade600,
                   ),
                 ],
               ),
@@ -100,8 +98,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           // --- 3. แผงข้อมูลที่เลื่อนได้ (Draggable Sheet) ---
           DraggableScrollableSheet(
             initialChildSize: 0.35, // ขนาดเริ่มต้น (35% ของหน้าจอ)
-            minChildSize: 0.35,     // ขนาดเล็กสุด
-            maxChildSize: 0.8,      // ขนาดใหญ่สุด
+            minChildSize: 0.35, // ขนาดเล็กสุด
+            maxChildSize: 0.8, // ขนาดใหญ่สุด
             builder: (BuildContext context, ScrollController scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -132,7 +130,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   // --- Widget สำหรับสร้างเนื้อหาใน Panel ---
   Widget _buildPanelContent() {
     // **** จุดแก้ไข: สร้าง URL รูปภาพ ****
-     final String senderImageUrl = widget.delivery.senderImageProfile ?? '';
+    final String senderImageUrl = widget.delivery.senderImageProfile ?? '';
     final String receiverImageUrl = widget.delivery.receiverImageProfile ?? '';
 
     return Padding(
@@ -167,7 +165,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
             imageUrl: '', // ยังไม่มีข้อมูลรูปไรเดอร์
           ),
           const SizedBox(height: 16),
-           _buildUserCard(
+          _buildUserCard(
             title: 'ผู้ส่ง',
             name: widget.delivery.senderName,
             phone: widget.delivery.senderUID,
@@ -196,20 +194,28 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   Widget _buildStatusTracker(String currentStatus) {
     // กำหนดว่าสถานะไหน active แล้วบ้าง
     int activeStep = 0;
-    switch(currentStatus) {
-      case 'pending': activeStep = 0; break;
-      case 'accepted': activeStep = 1; break;
-      case 'picked_up': activeStep = 2; break;
-      case 'delivered': activeStep = 3; break;
+    switch (currentStatus) {
+      case 'pending':
+        activeStep = 0;
+        break;
+      case 'accepted':
+        activeStep = 1;
+        break;
+      case 'picked_up':
+        activeStep = 2;
+        break;
+      case 'delivered':
+        activeStep = 3;
+        break;
     }
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatusStep('รอรับสินค้า', Icons.inventory_2_outlined, activeStep >= 0),
-        _buildStatusStep('กำลังไปรับ', Icons.motorcycle_outlined, activeStep >= 1),
-        _buildStatusStep('กำลังไปส่ง', Icons.local_shipping_outlined, activeStep >= 2),
-        _buildStatusStep('ส่งสำเร็จ', Icons.task_alt_outlined, activeStep >= 3),
+        _buildStatusStep('รอรับสินค้า', Symbols.inventory_2, activeStep >= 0),
+        _buildStatusStep('กำลังไปรับ', Symbols.motorcycle, activeStep >= 1),
+        _buildStatusStep('กำลังไปส่ง', Symbols.local_shipping, activeStep >= 2),
+        _buildStatusStep('ส่งสำเร็จ', Symbols.task_alt, activeStep >= 3),
       ],
     );
   }
@@ -227,7 +233,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       ],
     );
   }
-  
+
   Widget _buildUserCard({
     required String title,
     required String name,
@@ -240,49 +246,113 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           radius: 24,
           backgroundColor: Colors.grey.shade200,
           backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-          child: imageUrl.isEmpty ? const Icon(Icons.person, color: Colors.grey) : null,
+          child: imageUrl.isEmpty
+              ? const Icon(Icons.person, color: Colors.grey)
+              : null,
         ),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: GoogleFonts.prompt(color: Colors.grey[600])),
-            Text(name, style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              name,
+              style: GoogleFonts.prompt(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             Text(phone, style: GoogleFonts.prompt(color: Colors.grey[700])),
           ],
-        )
+        ),
       ],
     );
   }
-  
+
   Widget _buildItemDetailsCard() {
-      final imageUrl = widget.delivery.itemImage ?? '';
+    final imageUrl = widget.delivery.itemImage ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('รายละเอียดพัสดุ', style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          'รายละเอียดพัสดุ',
+          style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(imageUrl, width: 60, height: 60, fit: BoxFit.cover,
+              child: Image.network(
+                imageUrl,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
                 // เพิ่ม placeholder ขณะโหลด
                 loadingBuilder: (context, child, progress) {
-                  return progress == null ? child : const SizedBox(width: 60, height: 60, child: Center(child: CircularProgressIndicator()));
+                  return progress == null
+                      ? child
+                      : const SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
                 },
                 // เพิ่ม fallback กรณีโหลดรูปไม่ได้
                 errorBuilder: (context, error, stackTrace) {
-                  return const SizedBox(width: 60, height: 60, child: Icon(Icons.image_not_supported_outlined, color: Colors.grey));
+                  return const SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.grey,
+                    ),
+                  );
                 },
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(widget.delivery.itemDescription, style: GoogleFonts.prompt())),
+            Expanded(
+              child: Text(
+                widget.delivery.itemDescription,
+                style: GoogleFonts.prompt(),
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
-}
 
+  Marker _buildPinMarker(LatLng point, IconData icon, Color color) {
+    return Marker(
+      width: 80.0,
+      height: 80.0,
+      point: point,
+
+      // ✅✅✅ เพิ่มบรรทัดนี้เข้าไปครับ ✅✅✅
+      // เพื่อบอกให้ใช้ "ปลายแหลมด้านล่าง" เป็นจุดปักหมุด
+      anchor: Anchor.bottom(),
+
+      child: Stack(
+        // ... โค้ดส่วนที่เหลือเหมือนเดิมทั้งหมด ...
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.location_on,
+            color: color,
+            size: 60,
+            shadows: const [
+              Shadow(
+                blurRadius: 10.0,
+                color: Colors.black26,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          Positioned(top: 7, child: Icon(icon, color: Colors.white, size: 30)),
+        ],
+      ),
+    );
+  }
+}
