@@ -1,5 +1,5 @@
-import 'dart:async'; // <-- 1. Import 'async' เพื่อใช้ StreamSubscription
-import 'package:cloud_firestore/cloud_firestore.dart'; // <-- 2. Import Firestore
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
@@ -10,9 +10,10 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../api/api_service.dart';
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
-import '../model/response/searchphon_response.dart'; // <-- 3. Import FindUserResponse
+import '../model/response/searchphon_response.dart';
 
 class DeliveryTrackingScreen extends StatefulWidget {
+  // เรายังรับ delivery เริ่มต้นมาเหมือนเดิม เพื่อเอา ID ไปใช้ดักฟัง
   final Delivery delivery;
   final LoginResponse loginData;
 
@@ -27,46 +28,26 @@ class DeliveryTrackingScreen extends StatefulWidget {
 }
 
 class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
-  late LatLng senderLocation;
-  late LatLng receiverLocation;
-  late LatLngBounds mapBounds;
-
-  // ++ State สำหรับข้อมูลโปรไฟล์ไรเดอร์ ++
+  // ++ State ส่วนใหญ่ยังเหมือนเดิม ++
   final ApiService _apiService = ApiService();
   UserProfile? _riderProfile;
   bool _isLoadingRider = true;
-
-  // ++ State สำหรับ Real-time Tracking ++
   StreamSubscription? _locationSubscription;
   LatLng? _riderCurrentLocation;
 
   @override
   void initState() {
     super.initState();
-    // --- ตั้งค่าพิกัดเริ่มต้น ---
-    senderLocation = LatLng(
-      widget.delivery.senderAddress.coordinates.latitude,
-      widget.delivery.senderAddress.coordinates.longitude,
-    );
-    receiverLocation = LatLng(
-      widget.delivery.receiverAddress.coordinates.latitude,
-      widget.delivery.receiverAddress.coordinates.longitude,
-    );
-    mapBounds = LatLngBounds(senderLocation, receiverLocation);
-
-    // --- เริ่มกระบวนการดึงข้อมูล ---
+    // เราจะดึงข้อมูลไรเดอร์แค่ครั้งเดียวตอนเริ่มต้นก็พอ เพราะไม่น่าจะเปลี่ยน
     _initializeRiderDataAndTracking();
   }
 
-  // ++ ฟังก์ชันสำคัญ: จัดการการดึงข้อมูลและเริ่ม Tracking ++
+  // ฟังก์ชันนี้ยังทำงานเหมือนเดิม
   void _initializeRiderDataAndTracking() {
-    // ตรวจสอบก่อนว่ามีไรเดอร์รับงานแล้วหรือยัง
     if (widget.delivery.riderUID != null &&
         widget.delivery.riderUID!.isNotEmpty) {
-      // ถ้ามี ให้ไปดึงข้อมูลโปรไฟล์ และเริ่มดักฟังตำแหน่ง
       _fetchRiderProfileAndStartListening(widget.delivery.riderUID!);
     } else {
-      // ถ้ายังไม่มี ให้ตั้งค่าสถานะว่าโหลดเสร็จแล้ว (แต่ไม่มีข้อมูล)
       if (mounted) {
         setState(() {
           _isLoadingRider = false;
@@ -75,9 +56,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     }
   }
 
+  // ฟังก์ชันนี้ยังทำงานเหมือนเดิม
   Future<void> _fetchRiderProfileAndStartListening(String riderPhone) async {
     try {
-      // 1. ดึงข้อมูลโปรไฟล์ไรเดอร์ (ทำครั้งเดียว)
       final FindUserResponse response = await _apiService.findUserByPhone(
         token: widget.loginData.idToken,
         phone: riderPhone,
@@ -93,8 +74,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           );
           _isLoadingRider = false;
         });
-
-        // 2. เมื่อได้ข้อมูลโปรไฟล์แล้ว ให้เริ่ม "ดักฟัง" ตำแหน่ง Real-time
         _startListeningToRiderLocation(riderPhone);
       }
     } catch (e) {
@@ -107,8 +86,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     }
   }
 
+  // ฟังก์ชันนี้ยังทำงานเหมือนเดิม
   void _startListeningToRiderLocation(String riderPhone) {
-    // สมมติว่าใน Firestore มี collection 'riders' และ document ID คือเบอร์โทร
     final riderDocStream = FirebaseFirestore.instance
         .collection('riders')
         .doc(riderPhone)
@@ -117,16 +96,12 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     _locationSubscription = riderDocStream.listen((DocumentSnapshot snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         final data = snapshot.data() as Map<String, dynamic>;
-
-        // สมมติว่าใน document มี field 'currentLocation' ที่เป็น GeoPoint
         if (data.containsKey('currentLocation')) {
           final GeoPoint location = data['currentLocation'];
           if (mounted) {
             setState(() {
-              _riderCurrentLocation = LatLng(
-                location.latitude,
-                location.longitude,
-              );
+              _riderCurrentLocation =
+                  LatLng(location.latitude, location.longitude);
             });
           }
         }
@@ -134,7 +109,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     });
   }
 
-  // ++ สำคัญมาก: หยุดการดักฟังเมื่อออกจากหน้าจอ ++
   @override
   void dispose() {
     _locationSubscription?.cancel();
@@ -144,107 +118,143 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCameraFit: CameraFit.bounds(
-                bounds: mapBounds,
-                padding: const EdgeInsets.all(80.0),
-              ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.flash_dash_delivery',
-              ),
-              MarkerLayer(
-                markers: [
-                  _buildPinMarker(
-                    senderLocation,
-                    Symbols.approval_delegation,
-                    Colors.blue.shade700,
-                  ),
-                  _buildPinMarker(
-                    receiverLocation,
-                    Symbols.deployed_code_account,
-                    Colors.green.shade600,
-                  ),
+      // ++ 1. จุดแก้ไขหลัก: ใช้ StreamBuilder หุ้ม Body ทั้งหมด ++
+      body: StreamBuilder<DocumentSnapshot>(
+        // ตั้งค่าให้ Stream ดักฟัง Document ของ Delivery นี้โดยเฉพาะ
+        // *** สำคัญ: ต้องแน่ใจว่า collection ชื่อ 'deliveries' หรือถ้าเป็นชื่ออื่นให้แก้ตามจริง ***
+        stream: FirebaseFirestore.instance
+            .collection('deliveries')
+            .doc(widget.delivery.id) // ใช้ ID จาก delivery ที่รับมา
+            .snapshots(),
+        builder: (context, snapshot) {
+          // --- จัดการสถานะต่างๆ ของ Stream ---
+          if (snapshot.hasError) {
+            return Center(child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // ขณะรอข้อมูลครั้งแรก ให้แสดง Loading กลางจอ
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('ไม่พบข้อมูล Delivery'));
+          }
 
-                  // ++ Marker ของไรเดอร์ จะแสดงก็ต่อเมื่อมีตำแหน่งแล้ว ++
-                  if (_riderCurrentLocation != null)
-                    Marker(
-                      point: _riderCurrentLocation!,
-                      width: 80,
-                      height: 80,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Icon(
-                          //   Symbols.navigation,
-                          //   color: Colors.purple.shade700,
-                          //   size: 40,
-                          // ),
-                          Positioned(
-                            top: 15,
-                            child: Icon(
-                              Symbols.moped_package,
-                              color: const Color.fromARGB(255, 221, 0, 0),
-                              size: 35,
-                            ),
-                          ),
-                        ],
+          // --- เมื่อมีข้อมูลล่าสุดแล้ว ---
+          // ++ 2. แปลงข้อมูลล่าสุดที่ได้จาก Stream เป็น Object Delivery ++
+          final liveDelivery =
+              Delivery.fromJson(snapshot.data!.data() as Map<String, dynamic>);
+
+          // คำนวณค่าพิกัดจากข้อมูลล่าสุด
+          final senderLocation = LatLng(
+            liveDelivery.senderAddress.coordinates.latitude,
+            liveDelivery.senderAddress.coordinates.longitude,
+          );
+          final receiverLocation = LatLng(
+            liveDelivery.receiverAddress.coordinates.latitude,
+            liveDelivery.receiverAddress.coordinates.longitude,
+          );
+          final mapBounds = LatLngBounds(senderLocation, receiverLocation);
+
+          // ++ 3. นำ UI เดิมทั้งหมดมาวางไว้ที่นี่ และใช้ข้อมูลจาก 'liveDelivery' ++
+          return Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCameraFit: CameraFit.bounds(
+                    bounds: mapBounds,
+                    padding: const EdgeInsets.all(80.0),
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.flash_dash_delivery',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      _buildPinMarker(
+                        senderLocation,
+                        Symbols.approval_delegation,
+                        Colors.blue.shade700,
                       ),
-                    ),
+                      _buildPinMarker(
+                        receiverLocation,
+                        Symbols.deployed_code_account,
+                        Colors.green.shade600,
+                      ),
+                      if (_riderCurrentLocation != null)
+                        Marker(
+                          point: _riderCurrentLocation!,
+                          width: 80,
+                          height: 80,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                top: 15,
+                                child: Icon(
+                                  Symbols.moped_package,
+                                  color: const Color.fromARGB(255, 221, 0, 0),
+                                  size: 35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
-          Positioned(
-            top: 40,
-            left: 16,
-            child: SafeArea(
-              child: CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.8),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Get.back(),
+              Positioned(
+                top: 40,
+                left: 16,
+                child: SafeArea(
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white.withOpacity(0.8),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black),
+                      onPressed: () => Get.back(),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          DraggableScrollableSheet(
-            initialChildSize: 0.35,
-            minChildSize: 0.35,
-            maxChildSize: 0.8,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24.0),
-                    topRight: Radius.circular(24.0),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 10.0,
-                      color: Colors.black.withOpacity(0.2),
+              DraggableScrollableSheet(
+                initialChildSize: 0.35,
+                minChildSize: 0.35,
+                maxChildSize: 0.8,
+                builder: (context, scrollController) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24.0),
+                        topRight: Radius.circular(24.0),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 10.0,
+                          color: Colors.black.withOpacity(0.2),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: _buildPanelContent(),
-                ),
-              );
-            },
-          ),
-        ],
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      // ++ 4. ส่ง 'liveDelivery' ที่เป็นข้อมูลล่าสุดเข้าไปใน Panel ++
+                      child: _buildPanelContent(liveDelivery),
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPanelContent() {
+  // ++ 5. แก้ไข Widget ย่อย ให้รับ 'Delivery' object เป็นพารามิเตอร์ ++
+  Widget _buildPanelContent(Delivery delivery) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -261,12 +271,11 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildStatusTracker(widget.delivery.status),
+          // ใช้ข้อมูลจาก delivery ที่รับเข้ามา
+          _buildStatusTracker(delivery.status),
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
-
-          // ++ แก้ไข _buildUserCard ของไรเดอร์ ให้แสดงข้อมูลจาก State ++
           _buildUserCard(
             title: 'ไรเดอร์',
             name: _isLoadingRider
@@ -292,14 +301,60 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 16),
-          _buildItemDetailsCard(),
-            _buildItemDetailsCard(), //เพิ่มตรงนี้นะโม เพิ้ม Widget รับรูปจากไรเดอร์บอกด้วยว่าภาพจากไรเดอร์หรืออะไรก็ได้
+          _buildItemDetailsCard(delivery),
+          // Widget นี้จะแสดงก็ต่อเมื่อ delivery.pickupImage มีค่าเท่านั้น
+          _buildRiderImageCard(
+            'ไรเดอร์มารับสินค้าเเล้ว',
+            delivery.pickupImage,
+          ),
+          _buildRiderImageCard(
+            'ไรเดอร์ส่งสำเร็จ',
+            delivery.deliveredImage,
+          ),
         ],
       ),
     );
   }
 
-  // --- Widget ย่อยๆ สำหรับสร้าง UI (ไม่มีการแก้ไข) ---
+  // แก้ไขให้รับพารามิเตอร์
+  Widget _buildItemDetailsCard(Delivery delivery) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'รายละเอียดพัสดุ',
+          style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                delivery.itemImage,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const Center(child: CircularProgressIndicator()),
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Symbols.image_not_supported, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                delivery.itemDescription,
+                style: GoogleFonts.prompt(),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusTracker(String currentStatus) {
     int activeStep = 0;
     switch (currentStatus) {
@@ -446,40 +501,43 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
   }
 
-  Widget _buildItemDetailsCard() {
+  Widget _buildRiderImageCard(String title, String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 16),
         Text(
-          'รายละเอียดพัสดุ',
+          title,
           style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                widget.delivery.itemImage,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) => progress == null
-                    ? child
-                    : const Center(child: CircularProgressIndicator()),
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Symbols.image_not_supported, color: Colors.grey),
-              ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: 200,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) => progress == null
+                ? child
+                : Container(
+                    height: 200,
+                    alignment: Alignment.center,
+                    child: const CircularProgressIndicator(),
+                  ),
+            errorBuilder: (context, error, stackTrace) => Container(
+              height: 200,
+              alignment: Alignment.center,
+              child: const Icon(Symbols.broken_image,
+                  color: Colors.grey, size: 50),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                widget.delivery.itemDescription,
-                style: GoogleFonts.prompt(),
-              ),
-            ),
-          ],
+          ),
         ),
+        const SizedBox(height: 16),
+        const Divider(),
       ],
     );
   }
@@ -489,12 +547,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       width: 80.0,
       height: 80.0,
       point: point,
-      alignment: Alignment.topCenter, // ใช้ alignment ปกติ
+      alignment: Alignment.topCenter,
       child: Transform.translate(
-        offset: const Offset(
-          0,
-          20,
-        ), // ✅ ปรับค่าตรงนี้เพื่อขยับหมุดลง (20–30 กำลังดี)
+        offset: const Offset(0, 20),
         child: Stack(
           alignment: Alignment.center,
           children: [

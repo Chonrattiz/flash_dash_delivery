@@ -7,6 +7,8 @@ class Delivery {
   final String receiverUID;
   final String itemDescription;
   final String itemImage;
+  final String? pickupImage; // ++ เพิ่ม field นี้
+  final String? deliveredImage; // ++ เพิ่ม field นี้
   final String status;
   final String senderName;
   final String receiverName;
@@ -36,6 +38,8 @@ class Delivery {
     required this.receiverImageProfile,
     required this.riderNoteImage,
     this.riderProfile, // ++ เพิ่มใน constructor ++
+    this.pickupImage, // ++ เพิ่ม field นี้
+    this.deliveredImage, // ++ เพิ่ม field นี้
   });
 
   factory Delivery.fromJson(Map<String, dynamic> json) {
@@ -54,6 +58,8 @@ class Delivery {
       senderImageProfile: json['senderImageProfile'] ?? '',
       receiverImageProfile: json['receiverImageProfile'] ?? '',
       riderNoteImage: json['riderNoteImage'] ?? '',
+      pickupImage: json['pickupImage'], // ++ เพิ่ม field นี้
+      deliveredImage: json['deliveredImage'], // ++ เพิ่ม field นี้
       // riderProfile จะยังเป็น null ในตอนแรก เพราะต้องไป fetch มาทีหลัง
     );
   }
