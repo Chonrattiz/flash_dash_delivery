@@ -175,12 +175,12 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                     markers: [
                       _buildPinMarker(
                         senderLocation,
-                        Symbols.approval_delegation,
+                        Symbols.deployed_code_account,
                         Colors.blue.shade700,
                       ),
                       _buildPinMarker(
                         receiverLocation,
-                        Symbols.deployed_code_account,
+                        Symbols.approval_delegation,
                         Colors.green.shade600,
                       ),
                       if (_riderCurrentLocation != null)

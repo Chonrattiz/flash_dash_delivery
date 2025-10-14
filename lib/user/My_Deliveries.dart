@@ -8,6 +8,7 @@ import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
 import 'navbottom.dart';
 import 'delivery_tracking.dart';
+import 'combined_map_view.dart';
 
 class DeliveriesScreen extends StatefulWidget {
   const DeliveriesScreen({super.key});
@@ -88,6 +89,25 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
+
+        floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // เมื่อกดปุ่ม ให้เปิดหน้าจอแผนที่รวม
+          Get.to(
+            // ++ แก้ไขตรงนี้: เพิ่ม selectedTabIndex เข้าไป ++
+            () => CombinedMapViewScreen(
+              loginData: loginData!,
+              sentDeliveries: _sentDeliveries,
+              receivedDeliveries: _receivedDeliveries,
+              selectedTabIndex: _selectedTabIndex, // <-- ส่งสถานะของ Tab ปัจจุบันไปด้วย
+            ),
+            transition: Transition.downToUp,
+          );
+        },
+        backgroundColor: const Color(0xFFB3E59F),
+        child: const Icon(Icons.map_outlined, color: Colors.black87),
+      ),
+
       body: Column(
         children: [
           _buildToggleButtons(),
