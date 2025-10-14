@@ -180,17 +180,17 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Icon(
-                            Symbols.navigation,
-                            color: Colors.purple.shade700,
-                            size: 60,
-                          ),
+                          // Icon(
+                          //   Symbols.navigation,
+                          //   color: Colors.purple.shade700,
+                          //   size: 40,
+                          // ),
                           Positioned(
                             top: 15,
                             child: Icon(
-                              Symbols.moped,
-                              color: Colors.white,
-                              size: 30,
+                              Symbols.moped_package,
+                              color: const Color.fromARGB(255, 221, 0, 0),
+                              size: 35,
                             ),
                           ),
                         ],
@@ -293,6 +293,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const Divider(),
           const SizedBox(height: 16),
           _buildItemDetailsCard(),
+            _buildItemDetailsCard(), //เพิ่มตรงนี้นะโม เพิ้ม Widget รับรูปจากไรเดอร์บอกด้วยว่าภาพจากไรเดอร์หรืออะไรก็ได้
         ],
       ),
     );
