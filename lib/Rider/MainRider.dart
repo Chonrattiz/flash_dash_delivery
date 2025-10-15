@@ -1,4 +1,4 @@
-import 'package:flash_dash_delivery/Rider/delivery_tracking_screen.dart'; // +++ 1. เพิ่ม import สำหรับหน้า Tracking +++
+import 'package:flash_dash_delivery/Rider/delivery_tracking_screen.dart';
 import 'package:flash_dash_delivery/Rider/profile_rider.dart';
 import 'package:flash_dash_delivery/Rider/rider_order_details_screen.dart';
 import 'package:flash_dash_delivery/api/api_service.dart';
@@ -20,7 +20,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
 
   final ApiService _apiService = ApiService();
   List<Delivery> _pendingDeliveries = [];
-  bool _isLoading = true; // สถานะเริ่มต้นคือ Loading ถูกต้องแล้ว
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,10 +28,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     final arguments = Get.arguments;
     if (arguments is LoginResponse) {
       loginData = arguments;
-      // +++ 2. เปลี่ยนมาเรียกฟังก์ชันสำหรับตรวจสอบงานค้างก่อนเสมอ +++
       _checkAndNavigateToActiveDelivery();
     } else {
-      // กรณีฉุกเฉินถ้าไม่มีข้อมูล login มา ให้หยุด loading
       setState(() {
         _isLoading = false;
       });
@@ -39,66 +37,53 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     }
   }
 
-  // +++ 3. เพิ่มฟังก์ชันใหม่ทั้งหมดนี้เข้าไป +++
-  /// ตรวจสอบว่ามีงานที่ทำค้างอยู่หรือไม่ ถ้ามีให้ Navigate ไปทันที
   Future<void> _checkAndNavigateToActiveDelivery() async {
     if (loginData == null) return;
-
     try {
-      // เรียก API เพื่อเช็คงานปัจจุบัน
       final Delivery? activeDelivery = await _apiService.getCurrentDelivery(
         token: loginData!.idToken,
       );
-
-      // --- กรณีมีงานค้างอยู่ ---
       if (activeDelivery != null && mounted) {
         print(
             "พบงานที่กำลังทำอยู่! (${activeDelivery.id}), กำลังนำทางไปที่หน้า Tracking...");
-        // ใช้ Get.offAll เพื่อล้างหน้าเก่าทั้งหมด แล้วไปที่หน้า Tracking
-        // ทำให้ผู้ใช้กด back กลับมาไม่ได้
         Get.offAll(
           () => DeliveryTrackingScreen(
             delivery: activeDelivery,
             loginData: loginData!,
           ),
         );
-      }
-      // --- กรณีไม่มีงานค้าง ---
-      else {
+      } else {
         print("ไม่พบงานที่กำลังทำอยู่, กำลังโหลดรายการงานใหม่...");
-        // ถ้าไม่มีงานค้าง ก็ให้โหลดรายการงานที่รออยู่ตามปกติ
         _fetchPendingDeliveries();
       }
     } catch (e) {
-      // หากเกิดข้อผิดพลาดในการเช็คงานค้าง (เช่น ปัญหา network)
-      // ให้แจ้งเตือนและโหลดรายการงานปกติไปก่อน
       print("เกิดข้อผิดพลาดในการตรวจสอบงานที่ค้างอยู่: $e");
       Get.snackbar(
         'Error',
         'ไม่สามารถตรวจสอบสถานะงานล่าสุดได้: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
       );
-      // ดำเนินการโหลดรายการงานปกติ
       _fetchPendingDeliveries();
     }
   }
 
-  /// ดึงรายการงานที่อยู่ในสถานะ "pending"
+  // +++ 1. ปรับฟังก์ชันนี้เล็กน้อยให้ return Future<void> เพื่อใช้กับ onRefresh +++
   Future<void> _fetchPendingDeliveries() async {
     if (loginData == null) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
-    // ไม่ต้องครอบ try-catch อีกชั้น เพราะ _checkAndNavigateToActiveDelivery จัดการแล้ว
-    // แต่ถ้าต้องการแยก error ก็สามารถคงไว้ได้
+    // เมื่อมีการรีเฟรช เราไม่จำเป็นต้องแสดง Loading Indicator เต็มจอ
+    // ดังนั้นเราจะเช็คว่าถ้าไม่ใช่การโหลดครั้งแรก ก็ไม่ต้อง set _isLoading เป็น true
+    // แต่ RefreshIndicator จะแสดงวงกลมหมุนๆ ของมันเอง
     try {
       final deliveries =
           await _apiService.getPendingDeliveries(token: loginData!.idToken);
       if (mounted) {
         setState(() {
           _pendingDeliveries = deliveries;
-          _isLoading = false;
+          _isLoading = false; // ปิด loading indicator เมื่อโหลดเสร็จ
         });
       }
     } catch (e) {
@@ -136,20 +121,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-
-    // เราต้อง setState ก่อนเพื่อให้ UI ของ BottomNavBar อัปเดตทันที
     setState(() {
       _selectedIndex = index;
     });
 
     if (index == 1) {
       _navigateToProfile();
-    } else {
-      // เมื่อผู้ใช้กดกลับมาที่ Tab 'Job' ให้รีเซ็ต index กลับเป็น 0
-      // แต่เนื่องจากเราเช็ค `if (index == _selectedIndex) return;` ไว้ด้านบน
-      // โค้ดส่วนนี้อาจจะไม่ถูกเรียกถ้าผู้ใช้อยู่ที่หน้า Profile แล้วกด Profile ซ้ำ
-      // ดังนั้น การจัดการ State ใน _navigateToProfile อาจจะดีกว่า
-      // แต่สำหรับตอนนี้ยังใช้ได้อยู่
     }
   }
 
@@ -194,23 +171,32 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             ),
           ),
           Expanded(
+            // +++ 2. แก้ไขส่วน Expanded ให้ใช้ RefreshIndicator +++
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _pendingDeliveries.isEmpty
-                    ? const Center(child: Text('ไม่มีงานที่รอการจัดส่ง'))
-                    : RefreshIndicator(
-                        onRefresh:
-                            _fetchPendingDeliveries, // เพิ่มความสามารถในการดึงเพื่อรีเฟรช
-                        child: ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-                          itemCount: _pendingDeliveries.length,
-                          itemBuilder: (context, index) {
-                            final delivery = _pendingDeliveries[index];
-                            return _buildOrderCard(delivery: delivery);
-                          },
-                        ),
-                      ),
+                : RefreshIndicator(
+                    // onRefresh ต้องการฟังก์ชันที่เป็น Future<void>
+                    // ซึ่งเราได้ปรับ _fetchPendingDeliveries ไว้แล้ว
+                    onRefresh: _fetchPendingDeliveries,
+                    child: _pendingDeliveries.isEmpty
+                        ? Stack(
+                            // ใช้ Stack เพื่อให้ Text('ไม่มีงาน...') สามารถถูกดึงเพื่อรีเฟรชได้
+                            children: [
+                              ListView(), // ListView ว่างๆ เพื่อให้ RefreshIndicator ทำงานได้
+                              const Center(
+                                  child: Text('ไม่มีงานที่รอการจัดส่ง')),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding:
+                                const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                            itemCount: _pendingDeliveries.length,
+                            itemBuilder: (context, index) {
+                              final delivery = _pendingDeliveries[index];
+                              return _buildOrderCard(delivery: delivery);
+                            },
+                          ),
+                  ),
           ),
         ],
       ),
@@ -229,12 +215,13 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
+  // โค้ดส่วนที่เหลือ (_buildCustomAppBar และ _buildOrderCard) เหมือนเดิมทุกประการ
+  // ...
   Widget _buildCustomAppBar({
     required String username,
     String? imageUrl,
     required VoidCallback onProfileTap,
   }) {
-    // โค้ดส่วนนี้เหมือนเดิม ไม่มีการเปลี่ยนแปลง
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
@@ -306,7 +293,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   Widget _buildOrderCard({required Delivery delivery}) {
-    // โค้ดส่วนนี้เหมือนเดิม ไม่มีการเปลี่ยนแปลง
     final senderDetailParts = delivery.senderAddress.detail.split(',');
     final pickup =
         senderDetailParts.isNotEmpty ? senderDetailParts.first : 'N/A';
