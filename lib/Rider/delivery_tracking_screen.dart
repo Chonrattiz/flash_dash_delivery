@@ -55,11 +55,22 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   // --- ตัวแปรสำหรับจัดการ State ---
   bool _isConfirmingPickup = false;
   bool _isConfirmingDelivery = false;
-  TrackingStatus _currentStatus = TrackingStatus.pickingUp;
+  late TrackingStatus
+      _currentStatus; // เปลี่ยนเป็น late เพราะจะกำหนดค่าใน initState
 
   @override
   void initState() {
     super.initState();
+
+    // +++ 1. ปรับ initState ให้ตั้งค่าสถานะเริ่มต้นตามข้อมูลจริง +++
+    // เมื่อ Rider ปิดแอปแล้วเปิดใหม่ หน้านี้จะรู้ทันทีว่าต้องแสดง UI ของขั้นตอนไหน
+    if (widget.delivery.status == 'picked_up') {
+      _currentStatus = TrackingStatus.delivering;
+    } else {
+      // สำหรับสถานะ 'accepted' หรืออื่นๆ ที่ยังไม่ถึง picked_up
+      _currentStatus = TrackingStatus.pickingUp;
+    }
+
     _initializeLocationAndStartSendingUpdates();
   }
 
@@ -84,7 +95,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         currentLocation.latitude!,
         currentLocation.longitude!,
       );
-      setState(() => _currentRiderLocation = newLocation);
+      if (mounted) {
+        setState(() => _currentRiderLocation = newLocation);
+      }
 
       final now = DateTime.now();
       if (_lastLocationUpdateTime == null ||
@@ -100,27 +113,23 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     });
   }
 
-  // ++ 1. สร้างฟังก์ชันกลางสำหรับแสดง Dialog ยืนยัน ++
   void _showConfirmationDialog({
     required String title,
     required String content,
     required VoidCallback onConfirm,
   }) {
-    // เปลี่ยนจาก Get.dialog เป็น showDialog
     showDialog(
-      context: context, // ใช้ context ที่รับมา
-      barrierDismissible: false, // ป้องกันการกดปิดนอก Dialog
+      context: context,
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: Text(title),
           content: Text(content),
           actions: [
             TextButton(
               child: const Text('ยกเลิก'),
-              // เปลี่ยนจาก Get.back() เป็น Navigator.of(context).pop()
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -132,8 +141,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               ),
               child: const Text('ยืนยัน'),
               onPressed: () {
-                Navigator.of(dialogContext).pop(); // ปิด Dialog ก่อน
-                onConfirm(); // แล้วค่อยเรียกฟังก์ชัน
+                Navigator.of(dialogContext).pop();
+                onConfirm();
               },
             ),
           ],
@@ -168,8 +177,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       source: source,
       imageQuality: 70,
     );
-    if (pickedFile != null)
+    if (pickedFile != null) {
       setState(() => _pickedUpImageFile = File(pickedFile.path));
+    }
   }
 
   Future<void> _pickImageForDelivery() async {
@@ -179,8 +189,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       source: source,
       imageQuality: 70,
     );
-    if (pickedFile != null)
+    if (pickedFile != null) {
       setState(() => _deliveredImageFile = File(pickedFile.path));
+    }
   }
 
   double _calculateDistance(LatLng start, LatLng end) {
@@ -193,22 +204,15 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   }
 
   Future<void> _handleConfirmPickup() async {
+    // โค้ดส่วนนี้เหมือนเดิม
     if (_currentRiderLocation == null) {
-      Get.snackbar(
-        'ข้อผิดพลาด',
-        'ไม่สามารถระบุตำแหน่งของคุณได้',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('ข้อผิดพลาด', 'ไม่สามารถระบุตำแหน่งของคุณได้',
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
     if (_pickedUpImageFile == null) {
-      Get.snackbar(
-        'โปรดทราบ',
-        'กรุณาถ่ายรูปเพื่อยืนยันการรับสินค้า',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
+      Get.snackbar('โปรดทราบ', 'กรุณาถ่ายรูปเพื่อยืนยันการรับสินค้า',
+          backgroundColor: Colors.orange, colorText: Colors.white);
       return;
     }
     final pickupLocation = LatLng(
@@ -218,20 +222,17 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     final distance = _calculateDistance(_currentRiderLocation!, pickupLocation);
 
     if (distance > 200) {
-      Get.snackbar(
-        'คุณอยู่ไกลเกินไป',
-        'กรุณาเข้าใกล้จุดรับสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      // สามารถปรับระยะทางตรงนี้ได้ตามความเหมาะสม
+      Get.snackbar('คุณอยู่ไกลเกินไป',
+          'กรุณาเข้าใกล้จุดรับสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
 
     setState(() => _isConfirmingPickup = true);
     try {
-      final imageUrl = await _imageUploadService.uploadImageToCloudinary(
-        _pickedUpImageFile!,
-      );
+      final imageUrl = await _imageUploadService
+          .uploadImageToCloudinary(_pickedUpImageFile!);
       await _apiService.confirmPickup(
         token: widget.loginData.idToken,
         deliveryId: widget.delivery.id,
@@ -249,11 +250,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                   setState(() {
                     _currentStatus = TrackingStatus.delivering;
                     _isPanelExpanded = false;
-                    _sheetController.animateTo(
-                      0.22,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
+                    _sheetController.animateTo(0.22,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut);
                   });
                 },
                 child: const Text('ตกลง'),
@@ -265,60 +264,44 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       }
     } catch (e) {
       Get.snackbar(
-        'เกิดข้อผิดพลาด',
-        e.toString().replaceFirst("Exception: ", ""),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+          'เกิดข้อผิดพลาด', e.toString().replaceFirst("Exception: ", ""),
+          backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isConfirmingPickup = false);
     }
   }
 
   Future<void> _handleConfirmDelivery() async {
+    // โค้ดส่วนนี้เหมือนเดิม
     if (_currentRiderLocation == null) {
-      Get.snackbar(
-        'ข้อผิดพลาด',
-        'ไม่สามารถระบุตำแหน่งของคุณได้',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('ข้อผิดพลาด', 'ไม่สามารถระบุตำแหน่งของคุณได้',
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
     if (_deliveredImageFile == null) {
-      Get.snackbar(
-        'โปรดทราบ',
-        'กรุณาถ่ายรูปเพื่อยืนยันการส่งสินค้า',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
+      Get.snackbar('โปรดทราบ', 'กรุณาถ่ายรูปเพื่อยืนยันการส่งสินค้า',
+          backgroundColor: Colors.orange, colorText: Colors.white);
       return;
     }
-
     final receiverLocation = LatLng(
       widget.delivery.receiverAddress.coordinates.latitude,
       widget.delivery.receiverAddress.coordinates.longitude,
     );
-    final distance = _calculateDistance(
-      _currentRiderLocation!,
-      receiverLocation,
-    );
+    final distance =
+        _calculateDistance(_currentRiderLocation!, receiverLocation);
 
     if (distance > 200) {
-      Get.snackbar(
-        'คุณอยู่ไกลเกินไป',
-        'กรุณาเข้าใกล้จุดส่งสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      // สามารถปรับระยะทางตรงนี้ได้ตามความเหมาะสม
+      Get.snackbar('คุณอยู่ไกลเกินไป',
+          'กรุณาเข้าใกล้จุดส่งสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
 
     setState(() => _isConfirmingDelivery = true);
     try {
-      final imageUrl = await _imageUploadService.uploadImageToCloudinary(
-        _deliveredImageFile!,
-      );
+      final imageUrl = await _imageUploadService
+          .uploadImageToCloudinary(_deliveredImageFile!);
       await _apiService.confirmDelivery(
         token: widget.loginData.idToken,
         deliveryId: widget.delivery.id,
@@ -346,11 +329,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       }
     } catch (e) {
       Get.snackbar(
-        'เกิดข้อผิดพลาด',
-        e.toString().replaceFirst("Exception: ", ""),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+          'เกิดข้อผิดพลาด', e.toString().replaceFirst("Exception: ", ""),
+          backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isConfirmingDelivery = false);
     }
@@ -369,165 +349,162 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     const double minPanelSize = 0.22;
     const double maxPanelSize = 0.6;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentStatus == TrackingStatus.pickingUp
-                  ? senderLocation
-                  : receiverLocation,
-              initialZoom: 16.0,
-            ),
-            children: [
-               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.flash_dash_delivery',
+    // +++ 2. ครอบ Scaffold ด้วย WillPopScope เพื่อป้องกันการกด Back +++
+    return WillPopScope(
+      onWillPop: () async => false, // คืนค่า false เพื่อยกเลิกการ Back เสมอ
+      child: Scaffold(
+        body: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _currentStatus == TrackingStatus.pickingUp
+                    ? senderLocation
+                    : receiverLocation,
+                initialZoom: 16.0,
               ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    width: 80.0,
-                    height: 80.0,
-                    point: senderLocation,
-                    child: Column(
-                      children: [
-                        Icon(
-                          _currentStatus == TrackingStatus.delivering
-                              ? Icons.check_circle
-                              : Icons.storefront,
-                          color: _currentStatus == TrackingStatus.delivering
-                              ? Colors.grey
-                              : Colors.blue,
-                          size: 40,
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 2,
-                          ),
-                          color: _currentStatus == TrackingStatus.delivering
-                              ? Colors.grey
-                              : Colors.blue,
-                          child: const Text(
-                            "Pick Up",
-                            style: TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_currentStatus == TrackingStatus.delivering)
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.flash_dash_delivery',
+                ),
+                MarkerLayer(
+                  markers: [
                     Marker(
                       width: 80.0,
                       height: 80.0,
-                      point: receiverLocation,
+                      point: senderLocation,
                       child: Column(
                         children: [
-                          const Icon(Icons.home, color: Colors.red, size: 40),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            color: Colors.red,
-                            child: const Text(
-                              "Drop Off",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_currentRiderLocation != null)
-                    Marker(
-                      width: 80.0,
-                      height: 80.0,
-                      point: _currentRiderLocation!,
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.motorcycle,
-                            color: Colors.green,
+                          Icon(
+                            _currentStatus == TrackingStatus.delivering
+                                ? Icons.check_circle
+                                : Icons.storefront,
+                            color: _currentStatus == TrackingStatus.delivering
+                                ? Colors.grey
+                                : Colors.blue,
                             size: 40,
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            color: Colors.green,
+                                horizontal: 5, vertical: 2),
+                            color: _currentStatus == TrackingStatus.delivering
+                                ? Colors.grey
+                                : Colors.blue,
                             child: const Text(
-                              "Me",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
+                              "Pick Up",
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10),
                             ),
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            top: 40,
-            left: 16,
-            child: SafeArea(
-              child: CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.8),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Get.back(),
-                ),
-              ),
-            ),
-          ),
-          NotificationListener<DraggableScrollableNotification>(
-            onNotification: (notification) {
-              final isExpanded = notification.extent > minPanelSize + 0.02;
-              if (isExpanded != _isPanelExpanded)
-                setState(() => _isPanelExpanded = isExpanded);
-              return true;
-            },
-            child: DraggableScrollableSheet(
-              controller: _sheetController,
-              initialChildSize: minPanelSize,
-              minChildSize: minPanelSize,
-              maxChildSize: maxPanelSize,
-              builder:
-                  (BuildContext context, ScrollController scrollController) {
-                    return Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(24.0),
+                    if (_currentStatus == TrackingStatus.delivering)
+                      Marker(
+                        width: 80.0,
+                        height: 80.0,
+                        point: receiverLocation,
+                        child: Column(
+                          children: [
+                            const Icon(Icons.home, color: Colors.red, size: 40),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              color: Colors.red,
+                              child: const Text(
+                                "Drop Off",
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 10),
+                              ),
+                            ),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(blurRadius: 10.0, color: Colors.black26),
-                        ],
                       ),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        child: _currentStatus == TrackingStatus.pickingUp
-                            ? _buildPickupPanelContent(maxPanelSize)
-                            : _buildDeliveryPanelContent(maxPanelSize),
+                    if (_currentRiderLocation != null)
+                      Marker(
+                        width: 80.0,
+                        height: 80.0,
+                        point: _currentRiderLocation!,
+                        child: Column(
+                          children: [
+                            const Icon(Icons.motorcycle,
+                                color: Colors.green, size: 40),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              color: Colors.green,
+                              child: const Text(
+                                "Me",
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  },
+                  ],
+                ),
+              ],
             ),
-          ),
-        ],
+
+            // +++ 3. ลบปุ่ม Back ที่เป็น UI ออกไปจาก Stack +++
+            // Positioned(
+            //   top: 40,
+            //   left: 16,
+            //   child: SafeArea(
+            //     child: CircleAvatar(
+            //       backgroundColor: Colors.white.withOpacity(0.8),
+            //       child: IconButton(
+            //         icon: const Icon(Icons.arrow_back, color: Colors.black),
+            //         onPressed: () => Get.back(),
+            //       ),
+            //     ),
+            //   ),
+            // ),
+
+            NotificationListener<DraggableScrollableNotification>(
+              onNotification: (notification) {
+                final isExpanded = notification.extent > minPanelSize + 0.02;
+                if (isExpanded != _isPanelExpanded) {
+                  setState(() => _isPanelExpanded = isExpanded);
+                }
+                return true;
+              },
+              child: DraggableScrollableSheet(
+                controller: _sheetController,
+                initialChildSize: minPanelSize,
+                minChildSize: minPanelSize,
+                maxChildSize: maxPanelSize,
+                builder:
+                    (BuildContext context, ScrollController scrollController) {
+                  return Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24.0)),
+                      boxShadow: [
+                        BoxShadow(blurRadius: 10.0, color: Colors.black26),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: _currentStatus == TrackingStatus.pickingUp
+                          ? _buildPickupPanelContent(maxPanelSize)
+                          : _buildDeliveryPanelContent(maxPanelSize),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // โค้ดส่วน _buildPickupPanelContent และ _buildDeliveryPanelContent
+  // ไม่มีการเปลี่ยนแปลง สามารถใช้ของเดิมได้เลย
   Widget _buildPickupPanelContent(double maxPanelSize) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -547,12 +524,13 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () {
-              if (!_isPanelExpanded)
+              if (!_isPanelExpanded) {
                 _sheetController.animateTo(
                   maxPanelSize,
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
                 );
+              }
             },
             behavior: HitTestBehavior.opaque,
             child: Row(
@@ -640,12 +618,10 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  // ++ 2. แก้ไขปุ่มให้เรียกใช้ Dialog ยืนยัน ++
                   onPressed: _isConfirmingPickup
                       ? null
                       : () {
                           _showConfirmationDialog(
-                            // context: context, // ไม่ต้องส่ง context แล้ว เพราะฟังก์ชัน build มี context อยู่แล้ว
                             title: 'ยืนยันการรับสินค้า',
                             content:
                                 'คุณแน่ใจหรือไม่ว่าต้องการยืนยันการรับสินค้า?',
@@ -693,12 +669,13 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () {
-              if (!_isPanelExpanded)
+              if (!_isPanelExpanded) {
                 _sheetController.animateTo(
                   maxPanelSize,
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
                 );
+              }
             },
             behavior: HitTestBehavior.opaque,
             child: Row(
@@ -786,12 +763,10 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  // ++ 3. แก้ไขปุ่มให้เรียกใช้ Dialog ยืนยัน ++
                   onPressed: _isConfirmingDelivery
                       ? null
                       : () {
                           _showConfirmationDialog(
-                            // context: context, // ไม่ต้องส่ง context แล้ว
                             title: 'ยืนยันการส่งสินค้า',
                             content:
                                 'คุณแน่ใจหรือไม่ว่าได้ส่งสินค้าถึงมือผู้รับเรียบร้อยแล้ว?',

@@ -1,11 +1,11 @@
+import 'package:flash_dash_delivery/Rider/delivery_tracking_screen.dart'; // +++ 1. เพิ่ม import สำหรับหน้า Tracking +++
 import 'package:flash_dash_delivery/Rider/profile_rider.dart';
 import 'package:flash_dash_delivery/Rider/rider_order_details_screen.dart';
 import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../model/response/login_response.dart';
-import '../config/image_config.dart';
-import '../model/response/delivery_list_response.dart'; // 1. Import Delivery model
+import '../model/response/delivery_list_response.dart';
 
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -18,10 +18,9 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   int _selectedIndex = 0;
   LoginResponse? loginData;
 
-  // 2. สร้าง State สำหรับเก็บข้อมูลและสถานะการโหลด
   final ApiService _apiService = ApiService();
   List<Delivery> _pendingDeliveries = [];
-  bool _isLoading = true;
+  bool _isLoading = true; // สถานะเริ่มต้นคือ Loading ถูกต้องแล้ว
 
   @override
   void initState() {
@@ -29,31 +28,90 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     final arguments = Get.arguments;
     if (arguments is LoginResponse) {
       loginData = arguments;
-      // 3. เรียก API เพื่อดึงข้อมูลเมื่อหน้าจอถูกสร้าง
+      // +++ 2. เปลี่ยนมาเรียกฟังก์ชันสำหรับตรวจสอบงานค้างก่อนเสมอ +++
+      _checkAndNavigateToActiveDelivery();
+    } else {
+      // กรณีฉุกเฉินถ้าไม่มีข้อมูล login มา ให้หยุด loading
+      setState(() {
+        _isLoading = false;
+      });
+      Get.snackbar('Error', 'ไม่พบข้อมูลผู้ใช้งาน');
+    }
+  }
+
+  // +++ 3. เพิ่มฟังก์ชันใหม่ทั้งหมดนี้เข้าไป +++
+  /// ตรวจสอบว่ามีงานที่ทำค้างอยู่หรือไม่ ถ้ามีให้ Navigate ไปทันที
+  Future<void> _checkAndNavigateToActiveDelivery() async {
+    if (loginData == null) return;
+
+    try {
+      // เรียก API เพื่อเช็คงานปัจจุบัน
+      final Delivery? activeDelivery = await _apiService.getCurrentDelivery(
+        token: loginData!.idToken,
+      );
+
+      // --- กรณีมีงานค้างอยู่ ---
+      if (activeDelivery != null && mounted) {
+        print(
+            "พบงานที่กำลังทำอยู่! (${activeDelivery.id}), กำลังนำทางไปที่หน้า Tracking...");
+        // ใช้ Get.offAll เพื่อล้างหน้าเก่าทั้งหมด แล้วไปที่หน้า Tracking
+        // ทำให้ผู้ใช้กด back กลับมาไม่ได้
+        Get.offAll(
+          () => DeliveryTrackingScreen(
+            delivery: activeDelivery,
+            loginData: loginData!,
+          ),
+        );
+      }
+      // --- กรณีไม่มีงานค้าง ---
+      else {
+        print("ไม่พบงานที่กำลังทำอยู่, กำลังโหลดรายการงานใหม่...");
+        // ถ้าไม่มีงานค้าง ก็ให้โหลดรายการงานที่รออยู่ตามปกติ
+        _fetchPendingDeliveries();
+      }
+    } catch (e) {
+      // หากเกิดข้อผิดพลาดในการเช็คงานค้าง (เช่น ปัญหา network)
+      // ให้แจ้งเตือนและโหลดรายการงานปกติไปก่อน
+      print("เกิดข้อผิดพลาดในการตรวจสอบงานที่ค้างอยู่: $e");
+      Get.snackbar(
+        'Error',
+        'ไม่สามารถตรวจสอบสถานะงานล่าสุดได้: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      // ดำเนินการโหลดรายการงานปกติ
       _fetchPendingDeliveries();
     }
   }
 
-  // 4. สร้างฟังก์ชันสำหรับเรียก API
+  /// ดึงรายการงานที่อยู่ในสถานะ "pending"
   Future<void> _fetchPendingDeliveries() async {
-    if (loginData == null) return;
+    if (loginData == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // ไม่ต้องครอบ try-catch อีกชั้น เพราะ _checkAndNavigateToActiveDelivery จัดการแล้ว
+    // แต่ถ้าต้องการแยก error ก็สามารถคงไว้ได้
     try {
-      final deliveries = await _apiService.getPendingDeliveries(
-        token: loginData!.idToken
-      );
-      setState(() {
-        _pendingDeliveries = deliveries;
-        _isLoading = false;
-      });
+      final deliveries =
+          await _apiService.getPendingDeliveries(token: loginData!.idToken);
+      if (mounted) {
+        setState(() {
+          _pendingDeliveries = deliveries;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      Get.snackbar(
-        'Error',
-        'Failed to load deliveries: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        Get.snackbar(
+          'Error',
+          'ไม่สามารถโหลดรายการออเดอร์ได้: ${e.toString()}',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     }
   }
 
@@ -65,13 +123,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  // แก้ไขให้นำทางพร้อมกับส่งข้อมูล delivery ทั้งก้อนไป
   void _navigateToOrderDetails(Delivery delivery) {
     Get.to(
       () => RiderOrderDetailsScreen(),
       arguments: {
         'loginData': loginData,
-        'delivery': delivery, // ส่งข้อมูล delivery ที่เลือกไปด้วย
+        'delivery': delivery,
       },
       transition: Transition.fadeIn,
     );
@@ -80,6 +137,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
 
+    // เราต้อง setState ก่อนเพื่อให้ UI ของ BottomNavBar อัปเดตทันที
     setState(() {
       _selectedIndex = index;
     });
@@ -87,15 +145,18 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     if (index == 1) {
       _navigateToProfile();
     } else {
-      // กลับมาหน้าหลัก ไม่ต้องทำอะไร
+      // เมื่อผู้ใช้กดกลับมาที่ Tab 'Job' ให้รีเซ็ต index กลับเป็น 0
+      // แต่เนื่องจากเราเช็ค `if (index == _selectedIndex) return;` ไว้ด้านบน
+      // โค้ดส่วนนี้อาจจะไม่ถูกเรียกถ้าผู้ใช้อยู่ที่หน้า Profile แล้วกด Profile ซ้ำ
+      // ดังนั้น การจัดการ State ใน _navigateToProfile อาจจะดีกว่า
+      // แต่สำหรับตอนนี้ยังใช้ได้อยู่
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final String username = loginData?.userProfile.name ?? 'Rider';
-    final String? imageFilename = loginData?.userProfile.imageProfile;
-  final String fullImageUrl = loginData?.userProfile.imageProfile ?? '';
+    final String fullImageUrl = loginData?.userProfile.imageProfile ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -132,20 +193,24 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               ),
             ),
           ),
-          // 5. เปลี่ยนส่วนแสดงผล Card ให้เป็นแบบไดนามิก
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator())
                 : _pendingDeliveries.isEmpty
-                ? Center(child: Text('ไม่มีงานที่รอการจัดส่ง'))
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
-                    itemCount: _pendingDeliveries.length,
-                    itemBuilder: (context, index) {
-                      final delivery = _pendingDeliveries[index];
-                      return _buildOrderCard(delivery: delivery);
-                    },
-                  ),
+                    ? const Center(child: Text('ไม่มีงานที่รอการจัดส่ง'))
+                    : RefreshIndicator(
+                        onRefresh:
+                            _fetchPendingDeliveries, // เพิ่มความสามารถในการดึงเพื่อรีเฟรช
+                        child: ListView.builder(
+                          padding:
+                              const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                          itemCount: _pendingDeliveries.length,
+                          itemBuilder: (context, index) {
+                            final delivery = _pendingDeliveries[index];
+                            return _buildOrderCard(delivery: delivery);
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -165,11 +230,11 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   Widget _buildCustomAppBar({
-    // ... โค้ดส่วนนี้เหมือนเดิม ...
     required String username,
     String? imageUrl,
     required VoidCallback onProfileTap,
   }) {
+    // โค้ดส่วนนี้เหมือนเดิม ไม่มีการเปลี่ยนแปลง
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
@@ -209,16 +274,16 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                       CircleAvatar(
                         radius: 35,
                         backgroundColor: Colors.white,
+                        backgroundImage:
+                            (imageUrl != null && imageUrl.isNotEmpty)
+                                ? NetworkImage(imageUrl)
+                                : null,
                         child: (imageUrl == null || imageUrl.isEmpty)
                             ? const Icon(
                                 Icons.person,
                                 size: 40,
                                 color: Colors.grey,
                               )
-                            : null,
-                        backgroundImage:
-                            (imageUrl != null && imageUrl.isNotEmpty)
-                            ? NetworkImage(imageUrl)
                             : null,
                       ),
                       const SizedBox(height: 8),
@@ -240,21 +305,18 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  // 6. อัปเดต Widget ให้รับ Delivery object และจัดการแสดงผลตามที่ต้องการ
   Widget _buildOrderCard({required Delivery delivery}) {
-    // --- Logic การตัดคำ ---
+    // โค้ดส่วนนี้เหมือนเดิม ไม่มีการเปลี่ยนแปลง
     final senderDetailParts = delivery.senderAddress.detail.split(',');
-    final pickup = senderDetailParts.isNotEmpty
-        ? senderDetailParts.first
-        : 'N/A';
+    final pickup =
+        senderDetailParts.isNotEmpty ? senderDetailParts.first : 'N/A';
     final pickupDetails = senderDetailParts.length > 1
         ? senderDetailParts.sublist(1).join(',').trim()
         : 'N/A';
 
     final receiverDetailParts = delivery.receiverAddress.detail.split(',');
-    final deliveryLocation = receiverDetailParts.isNotEmpty
-        ? receiverDetailParts.first
-        : 'N/A';
+    final deliveryLocation =
+        receiverDetailParts.isNotEmpty ? receiverDetailParts.first : 'N/A';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -310,8 +372,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             Align(
               alignment: Alignment.center,
               child: ElevatedButton(
-                onPressed: () =>
-                    _navigateToOrderDetails(delivery), // ส่ง delivery ไปด้วย
+                onPressed: () => _navigateToOrderDetails(delivery),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0FC964),
                   foregroundColor: Colors.white,

@@ -315,7 +315,8 @@ class ApiService {
     if (response.statusCode == 200) {
       // 200 OK: รับงานสำเร็จ
       final responseBody = jsonDecode(response.body);
-      return responseBody['message']; // คืนค่าข้อความ "Delivery accepted successfully"
+      return responseBody[
+          'message']; // คืนค่าข้อความ "Delivery accepted successfully"
     } else {
       // กรณีเกิด Error (เช่น 409 Conflict เมื่องานถูกรับไปแล้ว)
       final errorBody = jsonDecode(response.body);
@@ -397,6 +398,34 @@ class ApiService {
     } else {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['error'] ?? 'Failed to confirm delivery');
+    }
+  }
+
+  /// ตรวจสอบงานที่ไรเดอร์ทำค้างอยู่ (สถานะ accepted หรือ picked_up)
+  Future<Delivery?> getCurrentDelivery({required String token}) async {
+    final response = await http.get(
+      Uri.parse(
+          '$_baseUrl/api/rider/deliveries/current'), // Endpoint ที่เราออกแบบไว้
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    // 200 OK หมายถึงมีงานค้างอยู่
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // Backend ควรจะส่งข้อมูล delivery กลับมาทั้ง object
+      return Delivery.fromJson(responseBody);
+    }
+    // 204 หรือ 404 หมายถึงไม่มีงานค้าง
+    else if (response.statusCode == 204 || response.statusCode == 404) {
+      return null;
+    }
+    // กรณีอื่นๆ คือ Error
+    else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to get current delivery');
     }
   }
 }
