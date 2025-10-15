@@ -221,7 +221,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     );
     final distance = _calculateDistance(_currentRiderLocation!, pickupLocation);
 
-    if (distance > 200) {
+    if (distance > 20) {
       // สามารถปรับระยะทางตรงนี้ได้ตามความเหมาะสม
       Get.snackbar('คุณอยู่ไกลเกินไป',
           'กรุณาเข้าใกล้จุดรับสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
@@ -290,7 +290,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     final distance =
         _calculateDistance(_currentRiderLocation!, receiverLocation);
 
-    if (distance > 200) {
+    if (distance > 20) {
       // สามารถปรับระยะทางตรงนี้ได้ตามความเหมาะสม
       Get.snackbar('คุณอยู่ไกลเกินไป',
           'กรุณาเข้าใกล้จุดส่งสินค้าอีก ${distance.toStringAsFixed(0)} เมตร',
@@ -447,22 +447,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                 ),
               ],
             ),
-
-            // +++ 3. ลบปุ่ม Back ที่เป็น UI ออกไปจาก Stack +++
-            // Positioned(
-            //   top: 40,
-            //   left: 16,
-            //   child: SafeArea(
-            //     child: CircleAvatar(
-            //       backgroundColor: Colors.white.withOpacity(0.8),
-            //       child: IconButton(
-            //         icon: const Icon(Icons.arrow_back, color: Colors.black),
-            //         onPressed: () => Get.back(),
-            //       ),
-            //     ),
-            //   ),
-            // ),
-
             NotificationListener<DraggableScrollableNotification>(
               onNotification: (notification) {
                 final isExpanded = notification.extent > minPanelSize + 0.02;
