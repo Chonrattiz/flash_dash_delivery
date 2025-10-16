@@ -39,13 +39,14 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-flutter:
-  uses-material-design: true
-  assets:
-    - assets/image/
-
 flutter_launcher_icons:
   android: "launcher_icon" # ตั้งค่าสำหรับ Android
   ios: true                # ตั้งค่าสำหรับ iOS
   image_path: "assets/image/logo_flash_dash.png" # <-- แก้เป็นชื่อไฟล์โลโก้ของคุณ
   min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/image/
+
