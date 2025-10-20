@@ -317,24 +317,6 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
               delivery.itemDescription,
               style: const TextStyle(fontSize: 14, color: Colors.black87),
             ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () {
-                  /* TODO: Implement map view */
-                },
-                style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Text(
-                  'View Map Route',
-                  style: TextStyle(
-                    color: Color(0xFF006970),
-                    fontSize: 15,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 20),
 
             // --- "รับงาน" Button ---
