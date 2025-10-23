@@ -5,6 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:async'; // --- [คงไว้] --- ยังคงใช้สำหรับ Debounce การค้นหา
 
+// --- [เพิ่ม] --- imports สำหรับแผนที่
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+// --- [จบส่วนเพิ่ม] ---
+
 import '../model/response/login_response.dart';
 import '../model/response/searchphon_response.dart';
 import 'main_user.dart';
@@ -29,13 +34,13 @@ class CreateDeliveryScreen extends StatefulWidget {
 }
 
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
-  // --- 1. Services & Controllers (คงเดิม) ---
+  // --- 1. Services & Controllers ---
   final ApiService _apiService = ApiService();
   final ImageUploadService _imageUploadService = ImageUploadService();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  // --- 2. State สำหรับ UI (คงเดิม) ---
+  // --- 2. State สำหรับ UI ---
   final ValueNotifier<int> _selectedSenderAddressIndex = ValueNotifier<int>(0);
   final ValueNotifier<int> _selectedReceiverAddressIndex =
       ValueNotifier<int>(0);
@@ -46,16 +51,18 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   bool _isSearching = false; // Loading ตอนยิง API ค้นหา
   String? _searchError;
 
-  // --- [แก้ไข] --- 3. State สำหรับข้อมูล (รวมร่าง) ---
-  // ลบ _foundUser แล้วใช้ _selectedReceiver แทน
-  // FindUserResponse? _foundUser;
+  // --- 3. State สำหรับข้อมูล ---
   FindUserResponse? _selectedReceiver; // State กลางสำหรับเก็บผู้รับที่ถูกเลือก
 
-  // State ใหม่สำหรับลิสต์ลูกค้า
+  // State สำหรับลิสต์ลูกค้า
   bool _isUsersLoading = true; // เปิดมาให้โหลดลิสต์ก่อน
   List<FindUserResponse> _allCustomers = [];
 
-  // --- [แก้ไข] ---
+  // --- [แก้ไข] --- 4. State สำหรับแผนที่ (ลบ sender controller) ---
+  // final MapController _senderMapController = MapController(); // <--- ลบออก
+  final MapController _receiverMapController = MapController();
+  // --- [จบส่วนแก้ไข] ---
+
   @override
   void initState() {
     super.initState();
@@ -63,8 +70,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     _fetchAllCustomers();
   }
 
-  // --- [แก้ไข] --- เพิ่มฟังก์ชันสำหรับดึงลูกค้าทั้งหมด (ที่ไม่ใช่ตัวเอง)
+  // ฟังก์ชันสำหรับดึงลูกค้าทั้งหมด (ที่ไม่ใช่ตัวเอง)
   Future<void> _fetchAllCustomers() async {
+    if (!mounted) return;
+    setState(() {
+      _isUsersLoading = true;
+    });
     try {
       final customers = await _apiService.getAllCustomers(
         token: widget.loginData.idToken,
@@ -72,17 +83,19 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       if (mounted) {
         setState(() {
           _allCustomers = customers;
-          _isUsersLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
+        // ไม่ต้องโชว์ Snackbar ก็ได้ เพราะอาจจะแค่เน็ตไม่ดี
+        print('Failed to load customer list: $e');
+      }
+    } finally {
+      if (mounted) {
         setState(() {
-          _isUsersLoading = false;
+          _isUsersLoading = false; // เสร็จสิ้นการโหลด
         });
       }
-      // ไม่ต้องโชว์ Snackbar ก็ได้ เพราะอาจจะแค่เน็ตไม่ดี
-      print('Failed to load customer list: $e');
     }
   }
 
@@ -92,12 +105,15 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     _selectedReceiverAddressIndex.dispose();
     _searchController.dispose();
     _debounce?.cancel();
+    // --- [แก้ไข] --- ลบ sender controller dispose ---
+    // _senderMapController.dispose(); // <--- ลบออก
+    _receiverMapController.dispose();
+    // --- [จบส่วนแก้ไข] ---
     super.dispose();
   }
 
-  //ฟังก์ชันหลักสำหรับจัดการการสร้างการจัดส่ง ---
+  // --- (ฟังก์ชัน _handleCreateDelivery เหมือนเดิม) ---
   Future<void> _handleCreateDelivery() async {
-    // --- [แก้ไข] --- 3A. ตรวจสอบข้อมูลเบื้องต้น
     if (_selectedReceiver == null) {
       Get.snackbar('ข้อมูลไม่ครบถ้วน', 'กรุณาค้นหาหรือเลือกผู้รับก่อน');
       return;
@@ -110,30 +126,27 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // --- 3B. อัปโหลดรูปภาพทั้งหมดก่อน (เหมือนเดิม) ---
+      // (ส่วนอัปโหลดรูปภาพ)
       final List<Future<String?>> uploadTasks = [
         _imageUploadService.uploadImageToCloudinary(_deliveryItem!.image),
         if (_riderImage != null)
           _imageUploadService.uploadImageToCloudinary(_riderImage!),
       ];
-
       final List<String?> uploadResults = await Future.wait(uploadTasks);
       final String itemImageFilename = uploadResults[0]!;
       final String? riderNoteImageFilename =
           uploadResults.length > 1 ? uploadResults[1] : null;
 
-      // --- [แก้ไข] --- 3C. รวบรวมข้อมูลทั้งหมด
+      // (ส่วนรวบรวมข้อมูล)
       final List<Address> senderAddresses =
           (widget.loginData.roleSpecificData as List).cast<Address>();
       final String senderAddressId =
           senderAddresses[_selectedSenderAddressIndex.value].id;
-
-      // ใช้ _selectedReceiver ที่เป็น State กลาง
       final String receiverAddressId =
           _selectedReceiver!.addresses[_selectedReceiverAddressIndex.value].id;
 
       final payload = CreateDeliveryPayload(
-        receiverPhone: _selectedReceiver!.phone, // ใช้เบอร์จาก State กลาง
+        receiverPhone: _selectedReceiver!.phone,
         senderAddressId: senderAddressId,
         receiverAddressId: receiverAddressId,
         itemDescription: _deliveryItem!.description,
@@ -141,20 +154,18 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         riderNoteImageFilename: riderNoteImageFilename,
       );
 
-      // --- 3D. เรียก API เพื่อสร้างการจัดส่ง (เหมือนเดิม) ---
+      // (ส่วนเรียก API)
       final message = await _apiService.createDelivery(
         token: widget.loginData.idToken,
         payload: payload,
       );
 
-      Get.back(); // ปิด Dialog ยืนยัน
+      Get.back();
       Get.snackbar('สำเร็จ', message,
           backgroundColor: Colors.green, colorText: Colors.white);
-
-      // กลับไปหน้าหลักหลังจากสร้างสำเร็จ
       Get.offAll(() => const MainUserPage(), arguments: widget.loginData);
     } catch (e) {
-      Get.back(); // ปิด Dialog ยืนยัน
+      Get.back();
       Get.snackbar(
           'เกิดข้อผิดพลาด', e.toString().replaceAll('Exception: ', ''));
     } finally {
@@ -164,7 +175,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
   }
 
-  // ฟังก์ชันจัดการการค้นหา ---
+  // --- (ฟังก์ชัน _onSearchChanged, _searchForUser เหมือนเดิม) ---
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
@@ -172,7 +183,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         _searchForUser(query);
       } else {
         setState(() {
-          // --- [แก้ไข] --- เคลียร์ State กลาง เมื่อช่องค้นหาว่าง
           _selectedReceiver = null;
           _searchError = null;
         });
@@ -184,8 +194,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     setState(() {
       _isSearching = true;
       _searchError = null;
-      _selectedReceiver =
-          null; // --- [แก้ไข] --- เคลียร์ State กลาง ทุกครั้งที่ค้นหา
+      _selectedReceiver = null;
     });
     try {
       final result = await _apiService.findUserByPhone(
@@ -193,13 +202,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         phone: phone,
       );
       setState(() {
-        _selectedReceiver = result; // --- [แก้ไข] --- อัปเดต State กลาง
-        _selectedReceiverAddressIndex.value = 0; // Reset index ผู้รับ
+        _selectedReceiver = result;
+        _selectedReceiverAddressIndex.value = 0;
       });
     } catch (e) {
       setState(() {
         _searchError = e.toString().replaceAll('Exception: ', '');
-        // _selectedReceiver ถูกเคลียร์ไปตั้งแต่ตอนเริ่มค้นหาแล้ว
       });
     } finally {
       if (mounted) {
@@ -254,7 +262,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
-  // --- (ฟังก์ชันจัดการ Dialog ต่างๆ _showAddItemDialog, _showItemDetailDialog, _showConfirmationDialog เหมือนเดิม) ---
+  // --- (ฟังก์ชันจัดการ Dialogs _showAddItemDialog, _showItemDetailDialog, _showConfirmationDialog เหมือนเดิม) ---
   Future<void> _showAddItemDialog() async {
     File? itemImage;
     final descriptionController = TextEditingController();
@@ -271,7 +279,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: const Color(0xFFF5F5F5), // สีพื้นหลังเทาอ่อน
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: SingleChildScrollView(
@@ -449,14 +457,14 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.transparent, // ทำให้พื้นหลัง dialog หลักโปร่งใส
         child: Stack(
           children: [
             Container(
               margin: const EdgeInsets.only(
                 top: 8,
                 right: 8,
-              ),
+              ), // เว้นที่ให้ปุ่ม Close
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -594,6 +602,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ดึง list ที่อยู่ของผู้ส่ง (เหมือนเดิม)
     final List<Address> senderAddresses =
         (widget.loginData.roleSpecificData as List).cast<Address>();
 
@@ -628,27 +637,32 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             children: [
               _buildSectionTitle('ที่อยู่ผู้ส่ง (ต้นทาง)'),
               const SizedBox(height: 8),
-              _buildAddressSelection(
+              // --- [แก้ไข] --- เรียก Widget ที่ไม่มีแผนที่ ---
+              _buildAddressListOnly(
+                // <--- เรียก Widget ใหม่
                 addresses: senderAddresses,
                 notifier: _selectedSenderAddressIndex,
                 emptyListMessage:
                     'คุณยังไม่มีที่อยู่, กรุณาไปที่หน้าโปรไฟล์เพื่อเพิ่ม',
               ),
+              // --- [จบส่วนแก้ไข] ---
               const SizedBox(height: 24),
+
               _buildSectionTitle('ผู้รับ (ปลายทาง)'),
               const SizedBox(height: 8),
               _buildReceiverField(), // ช่องค้นหา
               _buildSearchResult(), // แสดง Error (ถ้ามี)
 
-              // --- [แก้ไข] --- Widget ใหม่สำหรับแสดงรายละเอียดผู้รับ (ชื่อ + ที่อยู่)
+              // Widget แสดงรายละเอียดผู้รับ (จะเรียก _buildAddressSelection ที่มีแผนที่)
               _buildReceiverDetails(),
 
-              // --- [แก้ไข] --- เพิ่มส่วนลิสต์รายชื่อ
+              // ส่วนลิสต์รายชื่อลูกค้า
               const SizedBox(height: 24),
               _buildSectionTitle('หรือเลือกจากรายชื่อ'),
               const SizedBox(height: 8),
               _buildCustomerList(), // ลิสต์แนวนอน
 
+              // ... (ส่วน Item, Rider Photo, ปุ่มสร้าง เหมือนเดิม) ...
               const SizedBox(height: 24),
               _buildSectionTitle('รายการ'),
               const SizedBox(height: 8),
@@ -818,7 +832,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   }
 
   Widget _buildSearchResult() {
-    // --- [แก้ไข] --- Widget นี้จะแสดงเฉพาะ Error
     if (_searchError != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 8.0),
@@ -828,18 +841,16 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         ),
       );
     }
-    // ไม่ต้องแสดงชื่อผู้รับที่นี่แล้ว
     return const SizedBox.shrink();
   }
 
-  // --- [แก้ไข] --- Widget ใหม่สำหรับแสดงรายละเอียดผู้รับ (ชื่อ + ที่อยู่)
+  // --- Widget แสดงรายละเอียดผู้รับ (รวมแผนที่) ---
   Widget _buildReceiverDetails() {
-    // ถ้ายังไม่ได้เลือกใครเลย (ทั้งจากการค้นหา หรือการกด)
     if (_selectedReceiver == null) {
-      return const SizedBox.shrink();
+      return const SizedBox.shrink(); // ถ้ายังไม่เลือก ก็ไม่ต้องแสดงอะไร
     }
 
-    // ถ้าเลือกแล้ว, ให้แสดงชื่อและที่อยู่
+    // ถ้าเลือกแล้ว ให้แสดงชื่อ และ AddressSelection (ที่มีแผนที่ข้างใน)
     return Padding(
       padding: const EdgeInsets.only(top: 12.0),
       child: Column(
@@ -851,17 +862,20 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
+          // --- เรียก Widget เดิมที่มีแผนที่ (สำหรับผู้รับ) ---
           _buildAddressSelection(
             addresses: _selectedReceiver!.addresses,
             notifier: _selectedReceiverAddressIndex,
             emptyListMessage: 'ผู้รับยังไม่มีที่อยู่',
+            mapController: _receiverMapController, // ส่ง Controller ของผู้รับ
           ),
+          // --- จบส่วนแก้ไข ---
         ],
       ),
     );
   }
 
-  // --- [แก้ไข] --- Widget ใหม่สำหรับแสดงลิสต์ลูกค้า (แนวนอน)
+  // --- Widget แสดงลิสต์ลูกค้า (แนวนอน) ---
   Widget _buildCustomerList() {
     if (_isUsersLoading) {
       return Container(
@@ -877,30 +891,29 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
 
     if (_allCustomers.isEmpty) {
-      // ถ้าไม่มีลูกค้าคนอื่นเลย ก็ไม่ต้องแสดงอะไร
-      return const SizedBox.shrink();
+      return Container(
+          height: 120, // รักษา Layout ให้เหมือนเดิม
+          alignment: Alignment.center,
+          child: Text("ไม่พบรายชื่อลูกค้าอื่น",
+              style: GoogleFonts.prompt(color: Colors.grey[600])));
     }
 
     return SizedBox(
-      height: 120, // กำหนดความสูง
+      height: 120,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _allCustomers.length,
         itemBuilder: (context, index) {
           final customer = _allCustomers[index];
-
-          // เช็คว่าคนที่เลือกอยู่ (ถ้ามี) คือคนนี้หรือไม่
           final bool isSelected = _selectedReceiver?.phone == customer.phone;
 
           return GestureDetector(
             onTap: () {
-              // --- เมื่อกดเลือกจากลิสต์ ---
               setState(() {
-                _selectedReceiver = customer; // 1. อัปเดต State กลาง
-                _selectedReceiverAddressIndex.value = 0; // 2. Reset ที่อยู่
-                _searchController.text =
-                    customer.phone; // 3. อัปเดตช่องค้นหา (เผื่อ)
-                _searchError = null; // 4. เคลียร์ error
+                _selectedReceiver = customer;
+                _selectedReceiverAddressIndex.value = 0;
+                _searchController.text = customer.phone;
+                _searchError = null;
               });
             },
             child: Container(
@@ -923,7 +936,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                     radius: 24,
                     backgroundImage: (customer.imageProfile.isNotEmpty
                             ? NetworkImage(customer.imageProfile)
-                            : const AssetImage('assets/image/confusrd.png'))
+                            : const AssetImage(
+                                'assets/image/confusrd.png')) // ใส่รูป default ถ้าไม่มี
                         as ImageProvider,
                   ),
                   const SizedBox(height: 8),
@@ -934,6 +948,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                       style: GoogleFonts.prompt(fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center, // จัดกลางเผื่อชื่อยาว
                     ),
                   ),
                 ],
@@ -945,7 +960,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     );
   }
 
-  Widget _buildAddressSelection({
+  // --- [เพิ่ม] --- Widget ใหม่สำหรับแสดง *เฉพาะ* รายการที่อยู่ (ไม่มีแผนที่) ---
+  Widget _buildAddressListOnly({
     required List<Address> addresses,
     required ValueNotifier<int> notifier,
     required String emptyListMessage,
@@ -958,9 +974,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Center(child: Text(emptyListMessage)),
+        child:
+            Center(child: Text(emptyListMessage, style: GoogleFonts.prompt())),
       );
     }
+    // ใช้ ValueListenableBuilder เพื่อให้ List อัปเดตเมื่อมีการเลือก
     return ValueListenableBuilder<int>(
       valueListenable: notifier,
       builder: (context, selectedIndex, child) {
@@ -970,6 +988,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: _buildAddressCard(
+                // ใช้ _buildAddressCard เดิม
                 title: 'ที่อยู่ ${index + 1}',
                 address: address.detail,
                 isSelected: selectedIndex == index,
@@ -981,7 +1000,103 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       },
     );
   }
+  // --- [จบส่วนเพิ่ม] ---
 
+  // --- Widget แสดงแผนที่ + รายการที่อยู่ (สำหรับผู้รับเท่านั้น) ---
+  Widget _buildAddressSelection({
+    required List<Address> addresses,
+    required ValueNotifier<int> notifier,
+    required String emptyListMessage,
+    required MapController mapController, // รับ Controller
+    // ลบ showMap ออกไปเลย
+  }) {
+    if (addresses.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child:
+            Center(child: Text(emptyListMessage, style: GoogleFonts.prompt())),
+      );
+    }
+
+    return ValueListenableBuilder<int>(
+      valueListenable: notifier,
+      builder: (context, selectedIndex, child) {
+        final selectedCoordinates = addresses[selectedIndex].coordinates;
+        final mapCenter =
+            LatLng(selectedCoordinates.latitude, selectedCoordinates.longitude);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          mapController.move(mapCenter, 16.0); // ไม่มี if เช็คแล้ว
+        });
+
+        return Column(
+          children: [
+            // ส่วนแผนที่ (แสดงเสมอ)
+            SizedBox(
+              height: 150,
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: FlutterMap(
+                  mapController: mapController,
+                  options: MapOptions(
+                    initialCenter: mapCenter,
+                    initialZoom: 16.0,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName:
+                          'com.example.flash_dash_delivery', // <--- แก้เป็น package name ของคุณ
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: mapCenter,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(
+                            Icons.location_pin,
+                            size: 50,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // ส่วนรายการที่อยู่ (แสดงเสมอ)
+            ...List.generate(addresses.length, (index) {
+              final address = addresses[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _buildAddressCard(
+                  title: 'ที่อยู่ ${index + 1}',
+                  address: address.detail,
+                  isSelected: selectedIndex == index,
+                  onTap: () => notifier.value = index,
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- Widget Card ที่อยู่ (เหมือนเดิม) ---
   Widget _buildAddressCard({
     required String title,
     required String address,
@@ -1005,9 +1120,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(
-                top: 2.0,
-              ),
+              padding: const EdgeInsets.only(top: 2.0),
               child: Icon(
                 Icons.location_on_outlined,
                 color: isSelected ? const Color(0xFF4CAF50) : Colors.grey,
@@ -1037,4 +1150,4 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       ),
     );
   }
-}
+} // End of _CreateDeliveryScreenState
