@@ -226,6 +226,33 @@ class ApiService {
     }
   }
 
+  // +++ ฟังก์ชันใหม่สำหรับดึงลูกค้ทั้งหมด (ที่ไม่ใช่ Rider) +++
+  Future<List<FindUserResponse>> getAllCustomers({
+    required String token,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/users/customers'), // Endpoint ใหม่
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // Backend ส่งกลับมาเป็น { "customers": [...] }
+      final List<dynamic> customerListJson = responseBody['customers'];
+
+      // แปลง List ของ JSON เป็น List ของ FindUserResponse
+      return customerListJson
+          .map((json) => FindUserResponse.fromJson(json))
+          .toList();
+    } else {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to fetch customers');
+    }
+  }
+
   // **** เพิ่มฟังก์ชันใหม่สำหรับ "สร้าง" การจัดส่ง ****
   Future<String> createDelivery({
     required String token,
