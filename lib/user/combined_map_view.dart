@@ -5,7 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_symbols_icons/symbols.dart'; // Import symbols
 
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
@@ -14,14 +14,14 @@ class CombinedMapViewScreen extends StatefulWidget {
   final LoginResponse loginData;
   final List<Delivery> sentDeliveries;
   final List<Delivery> receivedDeliveries;
-  final int selectedTabIndex; // ++ 1. เพิ่ม parameter เพื่อรับค่า Tab index ++
+  final int selectedTabIndex;
 
   const CombinedMapViewScreen({
     super.key,
     required this.loginData,
     required this.sentDeliveries,
     required this.receivedDeliveries,
-    required this.selectedTabIndex, // ++ เพิ่มเข้ามาใน constructor ++
+    required this.selectedTabIndex,
   });
 
   @override
@@ -33,6 +33,16 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
   final List<StreamSubscription> _locationSubscriptions = [];
   bool _isLoading = true;
   LatLng? _userCurrentLocation;
+  List<Delivery> _activeDeliveries = [];
+
+  final List<Color> _orderColors = [
+    Colors.red.shade700,
+    Colors.blue.shade700,
+    Colors.green.shade700,
+    Colors.orange.shade700,
+    Colors.teal.shade700,
+    Colors.indigo.shade700,
+  ];
 
   @override
   void initState() {
@@ -40,8 +50,8 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
     _getUserLocationAndInitialize();
   }
 
+  // (โค้ดส่วน _getUserLocationAndInitialize และ _initializeRiderListeners เหมือนเดิม)
   Future<void> _getUserLocationAndInitialize() async {
-    // ... โค้ดส่วนนี้เหมือนเดิม ...
     bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -60,8 +70,10 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
       }
     }
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      setState(() => _userCurrentLocation = LatLng(position.latitude, position.longitude));
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() =>
+          _userCurrentLocation = LatLng(position.latitude, position.longitude));
     } catch (e) {
       setState(() => _userCurrentLocation = const LatLng(16.2463, 103.2505));
     } finally {
@@ -70,33 +82,36 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
   }
 
   void _initializeRiderListeners() {
-    // ++ 2. เลือก list ที่จะใช้ตาม selectedTabIndex ++
     final relevantDeliveries = widget.selectedTabIndex == 0
-        ? widget.sentDeliveries   // ถ้า Tab คือ "รายการที่จัดส่ง"
-        : widget.receivedDeliveries; // ถ้า Tab คือ "รายการที่ต้องรับ"
-
-    // ++ 3. ใช้ list ที่เลือกมาเพื่อกรองหาไรเดอร์ ++
-    final activeDeliveries = relevantDeliveries.where((d) =>
-        (d.status == 'accepted' || d.status == 'picked_up') &&
-        d.riderUID != null && d.riderUID!.isNotEmpty).toList();
-        
-    final uniqueRiderIds = activeDeliveries.map((d) => d.riderUID!).toSet();
-    
+        ? widget.sentDeliveries
+        : widget.receivedDeliveries;
+    final activeDeliveriesList = relevantDeliveries
+        .where((d) =>
+            (d.status == 'accepted' || d.status == 'picked_up') &&
+            d.riderUID != null &&
+            d.riderUID!.isNotEmpty)
+        .toList();
+    setState(() {
+      _activeDeliveries = activeDeliveriesList;
+    });
+    final uniqueRiderIds = _activeDeliveries.map((d) => d.riderUID!).toSet();
     if (uniqueRiderIds.isEmpty) {
       setState(() => _isLoading = false);
       return;
     }
-
-    // ... ส่วนที่เหลือของฟังก์ชันเหมือนเดิมทุกประการ ...
     for (final riderId in uniqueRiderIds) {
-      final stream = FirebaseFirestore.instance.collection('riders').doc(riderId).snapshots();
+      final stream = FirebaseFirestore.instance
+          .collection('riders')
+          .doc(riderId)
+          .snapshots();
       final subscription = stream.listen((snapshot) {
-        if (snapshot.exists && snapshot.data() != null) {
+        if (mounted && snapshot.exists && snapshot.data() != null) {
           final data = snapshot.data()!;
           if (data.containsKey('currentLocation')) {
             final GeoPoint location = data['currentLocation'];
             setState(() {
-              _riderLocations[riderId] = LatLng(location.latitude, location.longitude);
+              _riderLocations[riderId] =
+                  LatLng(location.latitude, location.longitude);
               if (_isLoading) _isLoading = false;
             });
           }
@@ -116,7 +131,6 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ++ 4. เปลี่ยนหัวข้อ AppBar และข้อความตาม Tab ที่เลือก ++
     final appBarTitle = widget.selectedTabIndex == 0
         ? 'ไรเดอร์ที่กำลังไปส่งของ'
         : 'ไรเดอร์ที่กำลังมาส่ง';
@@ -124,66 +138,117 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
         ? 'ไม่พบไรเดอร์ที่กำลังไปส่งของ'
         : 'ไม่พบไรเดอร์ที่กำลังมาส่ง';
 
-    // ... โค้ดคำนวณ Map options เหมือนเดิม ...
+    // ++ 1. สร้าง Map เพื่อเก็บสีสำหรับ Rider แต่ละคน (จาก Order แรกที่เจอ) ++
+    final Map<String, Color> riderColors = {};
+    for (var entry in _activeDeliveries.asMap().entries) {
+      final index = entry.key;
+      final delivery = entry.value;
+      final riderId = delivery.riderUID;
+      if (riderId != null && !riderColors.containsKey(riderId)) {
+        riderColors[riderId] = _orderColors[index % _orderColors.length];
+      }
+    }
+
+    // (โค้ดคำนวณ Map options เหมือนเดิม)
     LatLng initialCenter;
     double initialZoom;
     LatLngBounds? cameraBounds;
-
-    if (_riderLocations.length > 1) {
-      cameraBounds = LatLngBounds.fromPoints(_riderLocations.values.toList());
+    List<LatLng> allPoints = [];
+    // if (_userCurrentLocation != null) { allPoints.add(_userCurrentLocation!); } // เอาตำแหน่ง User ออก
+    allPoints.addAll(_riderLocations.values);
+    for (var delivery in _activeDeliveries) {
+      allPoints.add(LatLng(delivery.senderAddress.coordinates.latitude,
+          delivery.senderAddress.coordinates.longitude));
+      allPoints.add(LatLng(delivery.receiverAddress.coordinates.latitude,
+          delivery.receiverAddress.coordinates.longitude));
+    }
+    if (allPoints.length > 1) {
+      cameraBounds = LatLngBounds.fromPoints(allPoints);
       initialCenter = cameraBounds.center;
       initialZoom = 10;
-    } else if (_riderLocations.length == 1) {
+    } else if (allPoints.length == 1) {
       cameraBounds = null;
-      initialCenter = _riderLocations.values.first;
-      initialZoom = 16.0;
+      initialCenter = allPoints.first;
+      initialZoom = 15.0;
     } else {
       cameraBounds = null;
-      initialCenter = _userCurrentLocation ?? const LatLng(16.2463, 103.2505);
+      initialCenter = const LatLng(16.2463, 103.2505);
       initialZoom = 15.0;
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(appBarTitle, style: GoogleFonts.prompt()), // <-- ใช้หัวข้อใหม่
+        title: Text(appBarTitle, style: GoogleFonts.prompt()),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
       ),
       body: _isLoading || _userCurrentLocation == null
           ? const Center(child: CircularProgressIndicator())
-          : _riderLocations.isEmpty && !_isLoading
-              ? Center(child: Text(noRiderText, style: GoogleFonts.prompt(fontSize: 16))) // <-- ใช้ข้อความใหม่
+          : _activeDeliveries.isEmpty && _riderLocations.isEmpty && !_isLoading
+              ? Center(
+                  child: Text(noRiderText,
+                      style: GoogleFonts.prompt(fontSize: 16)))
               : FlutterMap(
                   options: MapOptions(
                     initialCenter: initialCenter,
                     initialZoom: initialZoom,
-                    initialCameraFit: cameraBounds != null 
+                    initialCameraFit: cameraBounds != null
                         ? CameraFit.bounds(
                             bounds: cameraBounds,
-                            padding: const EdgeInsets.all(50.0),
-                          )
+                            padding: const EdgeInsets.all(50.0))
                         : null,
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.flash_dash_delivery',
                     ),
                     MarkerLayer(
                       markers: [
-                        Marker(
-                          point: _userCurrentLocation!,
-                          child: const Icon(Icons.person_pin_circle, color: Colors.blue, size: 40),
-                        ),
-                        ..._riderLocations.values.map((latlng) {
+                        // Markers ตำแหน่งผู้ส่งและผู้รับ (เหมือนเดิม)
+                        ..._activeDeliveries.asMap().entries.expand((entry) {
+                          int index = entry.key;
+                          Delivery delivery = entry.value;
+                          final color =
+                              _orderColors[index % _orderColors.length];
+                          final senderMarker = _buildLocationMarker(
+                              LatLng(
+                                  delivery.senderAddress.coordinates.latitude,
+                                  delivery.senderAddress.coordinates.longitude),
+                              Symbols.deployed_code_account,
+                              color);
+                          final receiverMarker = _buildLocationMarker(
+                              LatLng(
+                                  delivery.receiverAddress.coordinates.latitude,
+                                  delivery
+                                      .receiverAddress.coordinates.longitude),
+                              Symbols.approval_delegation,
+                              color);
+                          return [senderMarker, receiverMarker];
+                        }).toList(),
+
+                        // ++ 2. แก้ไข Markers ตำแหน่งไรเดอร์ ให้ใช้สีจาก Map ที่สร้างไว้ ++
+                        ..._riderLocations.entries.map((entry) {
+                          final riderId = entry.key;
+                          final latlng = entry.value;
+                          // ดึงสีของ Rider คนนี้ (ถ้าไม่มี ใช้สีม่วงเป็น default)
+                          final riderColor =
+                              riderColors[riderId] ?? Colors.purple.shade700;
+
                           return Marker(
                             point: latlng,
+                            width: 80,
+                            height: 80,
                             child: Icon(
                               Symbols.moped,
-                              color: Colors.purple.shade700,
+                              // ++ 3. ใช้สีที่ดึงมา ++
+                              color: riderColor,
                               size: 40,
-                              shadows: const [Shadow(color: Colors.black54, blurRadius: 10)],
+                              shadows: const [
+                                Shadow(color: Colors.black54, blurRadius: 10)
+                              ],
                             ),
                           );
                         }),
@@ -191,6 +256,39 @@ class _CombinedMapViewScreenState extends State<CombinedMapViewScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+
+  // (Helper function _buildLocationMarker เหมือนเดิม)
+  Marker _buildLocationMarker(LatLng point, IconData icon, Color color) {
+    return Marker(
+      width: 80.0,
+      height: 80.0,
+      point: point,
+      alignment: Alignment.topCenter,
+      child: Transform.translate(
+        offset: const Offset(0, 20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.location_on,
+              color: color,
+              size: 60,
+              shadows: const [
+                Shadow(
+                    blurRadius: 10.0,
+                    color: Colors.black26,
+                    offset: Offset(0, 4)),
+              ],
+            ),
+            Positioned(
+              top: 15,
+              child: Icon(icon, color: Colors.white, size: 30),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
