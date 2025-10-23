@@ -1,9 +1,11 @@
 import 'package:flash_dash_delivery/Rider/delivery_tracking_screen.dart';
+import 'package:flash_dash_delivery/Rider/map_preview_screen.dart'; // Make sure this import is correct
 import 'package:flash_dash_delivery/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart'; // Import google_fonts
 
-import '../config/image_config.dart';
+import '../config/image_config.dart'; // Make sure this import exists and is correct
 import '../model/response/delivery_list_response.dart';
 import '../model/response/login_response.dart';
 
@@ -19,7 +21,7 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
-  // --- ฟังก์ชันสำหรับแสดง Dialog เมื่อรับงานสำเร็จ และ Navigate ---
+  // --- Function to show success dialog and navigate ---
   void _showSuccessAndNavigateDialog(
     Delivery delivery,
     LoginResponse loginData,
@@ -28,19 +30,20 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text('สำเร็จ!'),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 50),
-            SizedBox(height: 16),
-            Text('คุณรับงานสำเร็จแล้ว'),
+            const Icon(Icons.check_circle, color: Colors.green, size: 50),
+            const SizedBox(height: 16),
+            Text('คุณรับงานสำเร็จแล้ว',
+                style: GoogleFonts.prompt()), // Use GoogleFonts
           ],
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
             onPressed: () {
-              // ใช้ Get.off เพื่อไปยังหน้าใหม่และลบหน้าปัจจุบันออกจาก Stack
+              // Use Get.off to go to the new screen and remove the current one
               Get.off(
                 () => DeliveryTrackingScreen(
                   delivery: delivery,
@@ -48,15 +51,16 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                 ),
               );
             },
-            child: const Text('ตกลง', style: TextStyle(fontSize: 16)),
+            child: Text('ตกลง',
+                style: GoogleFonts.prompt(fontSize: 16)), // Use GoogleFonts
           ),
         ],
       ),
-      barrierDismissible: false, // ไม่ให้กดปิดนอก Dialog
+      barrierDismissible: false, // Prevent dismissing by tapping outside
     );
   }
 
-  // --- ฟังก์ชันเรียก API ---
+  // --- Function to call the API ---
   Future<void> _acceptJob(
     String token,
     String deliveryId,
@@ -71,7 +75,6 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
       await _apiService.acceptDelivery(token: token, deliveryId: deliveryId);
 
       if (mounted) {
-        // ✅ เรียกใช้ Dialog ใหม่แทน Snackbar
         _showSuccessAndNavigateDialog(delivery, loginData);
       }
     } catch (e) {
@@ -93,22 +96,27 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     }
   }
 
-  // --- ✅ แก้ไข Dialog ยืนยันให้มี Content ---
+  // --- Confirmation Dialog ---
   void _showConfirmationDialog(LoginResponse loginData, Delivery delivery) {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('ยืนยันการรับงาน'),
-        // ✅ เพิ่มเนื้อหาส่วนนี้เข้าไป
-        content: const Text('คุณต้องการรับงานนี้ใช่หรือไม่?'),
+        title: Text('ยืนยันการรับงาน',
+            style: GoogleFonts.prompt()), // Use GoogleFonts
+        content: Text('คุณต้องการรับงานนี้ใช่หรือไม่?',
+            style: GoogleFonts.prompt()), // Use GoogleFonts
         actions: [
-          TextButton(child: const Text('ยกเลิก'), onPressed: () => Get.back()),
+          TextButton(
+              child: Text('ยกเลิก',
+                  style: GoogleFonts.prompt()), // Use GoogleFonts
+              onPressed: () => Get.back()),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00897B),
               foregroundColor: Colors.white,
             ),
-            child: const Text('ยืนยัน'),
+            child:
+                Text('ยืนยัน', style: GoogleFonts.prompt()), // Use GoogleFonts
             onPressed: () {
               Get.back();
               _acceptJob(loginData.idToken, delivery.id, delivery, loginData);
@@ -119,33 +127,76 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     );
   }
 
+  // --- Function to show image preview dialog ---
+  void _showImagePreviewDialog(String imageUrl) {
+    Get.dialog(
+      AlertDialog(
+        contentPadding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                height: 200,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                height: 200,
+                alignment: Alignment.center,
+                child: Text('ไม่สามารถโหลดรูปภาพได้',
+                    style: GoogleFonts.prompt()), // Use GoogleFonts
+              );
+            },
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic> arguments;
 
-    // ป้องกัน Error กรณี arguments ไม่ใช่ Map
     try {
       arguments = Get.arguments as Map<String, dynamic>;
     } catch (e) {
-      return const Scaffold(
-        body: Center(child: Text('Error: Invalid arguments passed to screen.')),
+      return Scaffold(
+        // Return Scaffold for consistency
+        appBar: AppBar(
+            title:
+                Text('Error', style: GoogleFonts.prompt())), // Use GoogleFonts
+        body: Center(
+            child: Text('Error: Invalid arguments passed.',
+                style: GoogleFonts.prompt())), // Use GoogleFonts
       );
     }
 
-    // ใช้ Key ที่ถูกต้องในการดึงข้อมูล
     final LoginResponse? loginData = arguments['loginData'];
     final Delivery? deliveryData = arguments['delivery'];
 
-    final String riderUsername = loginData?.userProfile.name ?? 'Rider';
-
-    // ตรวจสอบว่าข้อมูลที่ได้รับมาเป็น null หรือไม่
+    // Check for null data after casting
     if (deliveryData == null || loginData == null) {
-      return const Scaffold(
+      return Scaffold(
+        // Return Scaffold for consistency
+        appBar: AppBar(
+            title:
+                Text('Error', style: GoogleFonts.prompt())), // Use GoogleFonts
         body: Center(
-          child: Text('Error: Data not found! Check argument keys.'),
+          child: Text('Error: Data not found! Check arguments.',
+              style: GoogleFonts.prompt()), // Use GoogleFonts
         ),
       );
     }
+
+    final String riderUsername = loginData.userProfile.name; // Safe now
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDEBED),
@@ -168,12 +219,13 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'รายละเอียด',
-                style: TextStyle(
+                style: GoogleFonts.prompt(
+                  // Use GoogleFonts
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0FC964),
+                  color: const Color(0xFF0FC964),
                 ),
               ),
             ),
@@ -182,8 +234,8 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
               child: _buildDetailsCard(
-                delivery: deliveryData,
-                loginData: loginData,
+                delivery: deliveryData, // Already checked for null
+                loginData: loginData, // Already checked for null
               ),
             ),
           ),
@@ -196,7 +248,6 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     required Delivery delivery,
     required LoginResponse loginData,
   }) {
-    // ดึง URL เต็มๆ มาจาก Model โดยตรง ไม่ต้องต่อ String แล้ว
     final String senderImageUrl = delivery.senderImageProfile;
     final String receiverImageUrl = delivery.receiverImageProfile;
     final String itemImageUrl = delivery.itemImage;
@@ -230,7 +281,8 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                   children: [
                     Text(
                       delivery.senderName,
-                      style: const TextStyle(
+                      style: GoogleFonts.prompt(
+                        // Use GoogleFonts
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -238,7 +290,8 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'โทรศัพท์ ${delivery.senderUID}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      style: GoogleFonts.prompt(
+                          color: Colors.grey, fontSize: 14), // Use GoogleFonts
                     ),
                   ],
                 ),
@@ -273,7 +326,8 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                   children: [
                     Text(
                       delivery.receiverName,
-                      style: const TextStyle(
+                      style: GoogleFonts.prompt(
+                        // Use GoogleFonts
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -281,45 +335,79 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'โทรศัพท์ ${delivery.receiverUID}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      style: GoogleFonts.prompt(
+                          color: Colors.grey, fontSize: 14), // Use GoogleFonts
                     ),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Pickup image(s)',
-              style: TextStyle(
+              style: GoogleFonts.prompt(
+                // Use GoogleFonts
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF77869E),
+                color: const Color(0xFF77869E),
               ),
             ),
             const SizedBox(height: 10),
+            // --- Item Images Row ---
             Row(
               children: [
                 if (itemImageUrl.isNotEmpty)
-                  _buildItemImage(imageUrl: itemImageUrl),
+                  _buildItemImage(
+                      imageUrl: itemImageUrl,
+                      onTap: () => _showImagePreviewDialog(itemImageUrl)),
                 if (itemImageUrl.isNotEmpty && riderNoteImageUrl.isNotEmpty)
                   const SizedBox(width: 10),
                 if (riderNoteImageUrl.isNotEmpty)
-                  _buildItemImage(imageUrl: riderNoteImageUrl),
+                  _buildItemImage(
+                      imageUrl: riderNoteImageUrl,
+                      onTap: () => _showImagePreviewDialog(riderNoteImageUrl)),
               ],
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'รายละเอียดสินค้า',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.prompt(
+                  fontSize: 16, fontWeight: FontWeight.bold), // Use GoogleFonts
             ),
             const SizedBox(height: 4),
             Text(
               delivery.itemDescription,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: GoogleFonts.prompt(
+                  fontSize: 14, color: Colors.black87), // Use GoogleFonts
+            ),
+            const SizedBox(height: 10),
+            // --- View Map Button ---
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () {
+                  Get.to(
+                    () => MapPreviewScreen(
+                      delivery: delivery,
+                    ),
+                    transition: Transition.rightToLeft,
+                  );
+                },
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                child: Text(
+                  'View Map Route',
+                  style: GoogleFonts.prompt(
+                    // Use GoogleFonts
+                    color: const Color(0xFF006970),
+                    fontSize: 15,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
 
-            // --- "รับงาน" Button ---
+            // --- Accept Job Button ---
             ElevatedButton(
               onPressed: _isLoading
                   ? null
@@ -339,7 +427,9 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                       color: Colors.white,
                       strokeWidth: 3,
                     )
-                  : const Text('รับงาน', style: TextStyle(fontSize: 18)),
+                  : Text('รับงาน',
+                      style:
+                          GoogleFonts.prompt(fontSize: 18)), // Use GoogleFonts
             ),
           ],
         ),
@@ -390,27 +480,33 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Pickup Location',
-                style: TextStyle(color: Color(0xFF77869E), fontSize: 12),
+                style: GoogleFonts.prompt(
+                    color: const Color(0xFF77869E),
+                    fontSize: 12), // Use GoogleFonts
               ),
               const SizedBox(height: 2),
               Text(
                 pickupLocation,
-                style: const TextStyle(
+                style: GoogleFonts.prompt(
+                  // Use GoogleFonts
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Delivery Location',
-                style: TextStyle(color: Color(0xFF77869E), fontSize: 12),
+                style: GoogleFonts.prompt(
+                    color: const Color(0xFF77869E),
+                    fontSize: 12), // Use GoogleFonts
               ),
               const SizedBox(height: 2),
               Text(
                 deliveryLocation,
-                style: const TextStyle(
+                style: GoogleFonts.prompt(
+                  // Use GoogleFonts
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -422,24 +518,25 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
     );
   }
 
-  Widget _buildItemImage({required String imageUrl}) {
-    if (imageUrl.isEmpty) {
-      return _buildPlaceholderImage();
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        imageUrl,
-        width: 64,
-        height: 64,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return _buildPlaceholderImage();
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholderImage();
-        },
+  Widget _buildItemImage(
+      {required String imageUrl, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imageUrl,
+          width: 64,
+          height: 64,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _buildPlaceholderImage(); // Show placeholder while loading
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPlaceholderImage(); // Show placeholder on error
+          },
+        ),
       ),
     );
   }
@@ -477,27 +574,37 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
                   ),
                   onPressed: () => Get.back(),
                 ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(80.0, 0, 0, 0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Flash-Dash',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                // --- Centered Title ---
+                // Use Expanded and Center to ensure title stays centered
+                // regardless of IconButton width
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Flash-Dash',
+                          style: GoogleFonts.prompt(
+                            // Use GoogleFonts
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Delivery',
-                        style: TextStyle(fontSize: 18, color: Colors.black54),
-                      ),
-                    ],
+                        Text(
+                          'Delivery',
+                          style: GoogleFonts.prompt(
+                              fontSize: 18,
+                              color: Colors.black54), // Use GoogleFonts
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                // Add SizedBox to balance the IconButton on the left if needed
+                // Or keep empty if title centering works well
+                const SizedBox(width: 48), // Match IconButton width approx
               ],
             ),
           ),
@@ -505,4 +612,4 @@ class _RiderOrderDetailsScreenState extends State<RiderOrderDetailsScreen> {
       ),
     );
   }
-}
+} // End of _RiderOrderDetailsScreenState

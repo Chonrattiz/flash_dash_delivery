@@ -41,7 +41,7 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: "launcher_icon" # ตั้งค่าสำหรับ Android
-  image_path: "assets/image/logo_flash_dash.png" 
+  image_path: "assets/image/logo2.jpg" 
   min_sdk_android: 21
 
 

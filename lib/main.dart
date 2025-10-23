@@ -9,7 +9,7 @@ import 'package:get/get.dart';
 void main() async {
   // 4. ตรวจสอบให้แน่ใจว่า Flutter พร้อมทำงานก่อน Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 5. เริ่มต้นการเชื่อมต่อ Firebase โดยใช้ไฟล์ options ที่สร้างไว้
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -34,7 +34,8 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: WelcomePage(), // ถ้า WelcomePage ไม่มี const constructor ให้ลบ const ออก
+      home:
+          WelcomePage(), // ถ้า WelcomePage ไม่มี const constructor ให้ลบ const ออก
     );
   }
 }
