@@ -10,7 +10,6 @@ import 'package:flash_dash_delivery/auth/welcome.dart';
 import 'package:flash_dash_delivery/user/main_user.dart';
 
 // Import our service and models
-
 import '../model/request/login_request.dart';
 import '../model/response/login_response.dart';
 
@@ -83,9 +82,9 @@ class _LoginPageState extends State<LoginPage> {
       Get.snackbar(
         'Login Failed',
         e.toString().replaceFirst(
-          'Exception: ',
-          '',
-        ), // Clean up the error message
+              'Exception: ',
+              '',
+            ), // Clean up the error message
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -101,6 +100,10 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ดึงขนาดของหน้าจอมาใช้งาน
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -115,7 +118,8 @@ class _LoginPageState extends State<LoginPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              Get.to(() => WelcomePage());
+              // ใช้ Get.back() จะดีกว่า เพราะเป็นการย้อนกลับไปหน้าก่อนหน้าจริงๆ
+              Get.back();
             },
           ),
           backgroundColor: Colors.transparent,
@@ -124,7 +128,8 @@ class _LoginPageState extends State<LoginPage> {
           title: Text(
             'Login',
             style: GoogleFonts.prompt(
-              fontSize: 28,
+              // ปรับขนาดฟอนต์ตามความกว้างจอ
+              fontSize: screenWidth * 0.07,
               fontWeight: FontWeight.w500,
               color: Colors.black,
             ),
@@ -133,80 +138,94 @@ class _LoginPageState extends State<LoginPage> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            // ปรับ Padding ด้านข้างให้เป็นสัดส่วน
+            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Image.asset('assets/image/login.png', height: 250),
-                ),
-                const SizedBox(height: 20),
+                // ปรับขนาดรูปภาพตามความสูงจอ
+                Image.asset('assets/image/login.png',
+                    height: screenHeight * 0.25),
+                SizedBox(height: screenHeight * 0.02),
 
-                // Phone number field with controller
                 _buildTextField(
                   controller: _phoneController,
                   hintText: 'Phone Number',
                   keyboardType: TextInputType.phone,
+                  // ส่งขนาดจอเข้าไปเพื่อคำนวณสัดส่วน
+                  context: context,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: screenHeight * 0.02),
 
-                // Password field with controller
                 _buildTextField(
                   controller: _passwordController,
                   hintText: 'Password',
                   obscureText: true,
+                  context: context,
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: screenHeight * 0.05),
 
                 // Login Button
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF38E07B),
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF38E07B),
+                      // ปรับ Padding ภายในปุ่มให้เป็นสัดส่วน
+                      padding:
+                          EdgeInsets.symmetric(vertical: screenHeight * 0.018),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
-                  ),
-                  onPressed: _isLoading ? null : _login,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          'Login',
-                          style: GoogleFonts.prompt(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    onPressed: _isLoading ? null : _login,
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            'Login',
+                            style: GoogleFonts.prompt(
+                              fontSize: screenWidth * 0.055,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: screenHeight * 0.05),
 
                 Text(
                   "Don't have an account?",
                   style: GoogleFonts.prompt(
-                    fontSize: 17,
+                    fontSize: screenWidth * 0.04,
                     color: Colors.black54,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: screenHeight * 0.02),
 
                 // Register buttons
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildRegisterButton(
-                      text: 'Register as User',
-                      onPressed: () => Get.to(() => const SignUpUserScreen()),
+                    Expanded(
+                      child: _buildRegisterButton(
+                        text: 'Register as User',
+                        onPressed: () => Get.to(() => const SignUpUserScreen()),
+                        context: context,
+                      ),
                     ),
-                    _buildRegisterButton(
-                      text: 'Register as Rider',
-                      onPressed: () => Get.to(() => const SignUpRiderScreen()),
+                    SizedBox(width: screenWidth * 0.04), // ระยะห่างระหว่างปุ่ม
+                    Expanded(
+                      child: _buildRegisterButton(
+                        text: 'Register as Rider',
+                        onPressed: () =>
+                            Get.to(() => const SignUpRiderScreen()),
+                        context: context,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: screenHeight * 0.02),
               ],
             ),
           ),
@@ -216,13 +235,18 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildTextField({
-    TextEditingController? controller, // Make controller nullable for reuse
+    required BuildContext context, // รับ context เข้ามา
+    TextEditingController? controller,
     required String hintText,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    // ดึงขนาดจอมาใช้ที่นี่ด้วย
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return TextField(
-      controller: controller, // Assign the controller here
+      controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       decoration: InputDecoration(
@@ -234,28 +258,43 @@ class _LoginPageState extends State<LoginPage> {
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 16,
-          horizontal: 20,
+        // ปรับ contentPadding ให้เป็นสัดส่วน
+        contentPadding: EdgeInsets.symmetric(
+          vertical: screenHeight * 0.02,
+          horizontal: screenWidth * 0.05,
         ),
       ),
     );
   }
 
   Widget _buildRegisterButton({
+    required BuildContext context, // รับ context เข้ามา
     required String text,
     required VoidCallback onPressed,
   }) {
+    // ดึงขนาดจอมาใช้ที่นี่ด้วย
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color.fromARGB(255, 177, 236, 203),
         foregroundColor: Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        // ปรับ padding ให้เป็นสัดส่วน
+        padding: EdgeInsets.symmetric(
+            horizontal: screenWidth * 0.02, vertical: screenHeight * 0.015),
         elevation: 0,
       ),
       onPressed: onPressed,
-      child: Text(text, style: GoogleFonts.prompt(fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center, // ทำให้ข้อความอยู่กลางปุ่มเสมอ
+        style: GoogleFonts.prompt(
+          fontWeight: FontWeight.w600,
+          fontSize: screenWidth * 0.035, // ปรับขนาดฟอนต์ให้พอดี
+        ),
+      ),
     );
   }
 }
